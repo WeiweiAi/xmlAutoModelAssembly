@@ -403,7 +403,7 @@ def _setAlgorithm(sed_algorithm, dict_algorithm):
                 return False
     return True
 
-def _get_dict_algorithm(sed_algorithm):
+def get_dict_algorithm(sed_algorithm):
     """Get the information of an algorithm
     Args:
         sed_algorithm (:obj:`SedAlgorithm`): an instance of :obj:`SedAlgorithm`
@@ -463,7 +463,7 @@ def get_dict_uniformTimeCourse(sim):
     dict_uniformTimeCourse['outputEndTime'] = sim.getOutputEndTime()
     dict_uniformTimeCourse['numberOfSteps'] = sim.getNumberOfPoints()
     sed_algorithm = sim.getAlgorithm()
-    dict_uniformTimeCourse['algorithm']=_get_dict_algorithm(sed_algorithm)
+    dict_uniformTimeCourse['algorithm']=get_dict_algorithm(sed_algorithm)
     return dict_uniformTimeCourse
 
 def create_sim_OneStep(doc,dict_oneStep):
@@ -499,7 +499,7 @@ def get_dict_oneStep(sim):
     dict_oneStep['type'] = libsedml.SedTypeCode_toString(sim.getTypeCode())
     dict_oneStep['step'] = sim.getStep()
     sed_algorithm = sim.getAlgorithm()
-    dict_oneStep['algorithm']=_get_dict_algorithm(sed_algorithm)
+    dict_oneStep['algorithm']=get_dict_algorithm(sed_algorithm)
     return dict_oneStep
 
 def create_sim_SteadyState(doc,dict_steadyState):
@@ -531,7 +531,7 @@ def get_dict_steadyState(sim):
     dict_steadyState['id'] = sim.getId()
     dict_steadyState['type'] = libsedml.SedTypeCode_toString(sim.getTypeCode())
     sed_algorithm = sim.getAlgorithm()
-    dict_steadyState['algorithm']=_get_dict_algorithm(sed_algorithm)
+    dict_steadyState['algorithm']=get_dict_algorithm(sed_algorithm)
     return dict_steadyState
 
 def create_simulation(doc,dict_simulation):
@@ -881,7 +881,7 @@ def _setFitExperiment(task_pe,dict_fitExperiment):
     Args:
         task_pe (:obj:`SedParameterEstimationTask`): an instance of :obj:`SedParameterEstimationTask`
         dict_fitExperiment (:obj:`dict`): The dictionary format: 
-                                          {'id':'fitExperimen1','type':'TimeCourse or SteadyState or invalid ExperimentType value','algorithm':dict_algorithm,'listOfFitMappings':[dict_fitMapping]}
+                                          {'id':'fitExperimen1','type':'timeCourse or steadyState or invalid ExperimentType value','algorithm':dict_algorithm,'listOfFitMappings':[dict_fitMapping]}
                                           fitMapping is used to correlate elements of a model simulation with data for that simulation, whether time, inputs (experimental conditions) or outputs (observables).
                                           dict_fitMapping format: 
                                           {'type':'time or observable or experimentalCondition','dataSource':'data_source_1','target':'is an SIdRef to a DataGenerator','weight':None,'pointWeight':None}                                   
@@ -913,11 +913,13 @@ def _setFitExperiment(task_pe,dict_fitExperiment):
             return False
         if dict_fitMapping['type']=='observable':
             if 'weight' in dict_fitMapping:
-                if not operation_flag_check(fitMapping.setWeight(dict_fitMapping['weight']), 'Set the weight attribute of a fit mapping'):
-                    return False
+                if dict_fitMapping['weight'] is not None:
+                    if not operation_flag_check(fitMapping.setWeight(dict_fitMapping['weight']), 'Set the weight attribute of a fit mapping'):
+                        return False
             elif 'pointWeight' in dict_fitMapping:
-                if not operation_flag_check(fitMapping.setPointWeight(dict_fitMapping['pointWeight']), 'Set the pointWeight attribute of a fit mapping'):
-                    return False
+                if dict_fitMapping['pointWeight'] is not None:
+                    if not operation_flag_check(fitMapping.setPointWeight(dict_fitMapping['pointWeight']), 'Set the pointWeight attribute of a fit mapping'):
+                        return False
     return True
 
 def _get_dict_fitExperiment(fe):
@@ -935,7 +937,7 @@ def _get_dict_fitExperiment(fe):
     dict_fitExperiment['id'] = fe.getId()
     dict_fitExperiment['type'] = fe.getTypeAsString()
     sed_algorithm = fe.getAlgorithm()
-    dict_fitExperiment['algorithm'] = _get_dict_algorithm(sed_algorithm)    
+    dict_fitExperiment['algorithm'] = get_dict_algorithm(sed_algorithm)    
     dict_fitExperiment['listOfFitMappings'] = []
     for fitMapping in fe.getListOfFitMappings():
         dict_fitMapping = {}
@@ -956,7 +958,7 @@ def create_parameterEstimationTask(doc,dict_parameterEstimationTask):
     Args:
         doc (:obj:`SedDocument`): an instance of :obj:`SedDocument`
         dict_parameterEstimationTask (:obj:`dict`): The dictionary format: 
-                                                    {'id':'parameterEstimationTask1','type':libsedml.SEDML_TASK_PARAMETER_ESTIMATION,'modelReference':'model1','algorithm':dict_algorithm,'objective':{'type':'leastSquare'},
+                                                    {'id':'parameterEstimationTask1','type':libsedml.SEDML_TASK_PARAMETER_ESTIMATION,'algorithm':dict_algorithm,'objective':{'type':'leastSquare'},
                                                      'listOfAdjustableParameters':[dict_adjustableParameter],'listOfFitExperiments':[dict_fitExperiment]}
     Returns:
         :obj:`bool` or `SedParameterEstimationTask`: If the parameter estimation task is created successfully, return the instance of :obj:`SedParameterEstimationTask`; otherwise, return False
@@ -964,8 +966,8 @@ def create_parameterEstimationTask(doc,dict_parameterEstimationTask):
     task_pe = doc.createParameterEstimationTask()
     if not operation_flag_check(task_pe.setId(dict_parameterEstimationTask['id']), 'Set the id attribute of a parameter estimation task'):
         return False
-    if not operation_flag_check(task_pe.setModelReference(dict_parameterEstimationTask['modelReference']), 'Set the modelReference attribute of a parameter estimation task'):
-        return False
+    #if not operation_flag_check(task_pe.setModelReference(dict_parameterEstimationTask['modelReference']), 'Set the modelReference attribute of a parameter estimation task'):
+        #return False
     alg = task_pe.createAlgorithm()
     if not _setAlgorithm(alg, dict_parameterEstimationTask['algorithm']):
         return False
@@ -989,15 +991,15 @@ def get_dict_parameterEstimationTask(task_pe):
         task_pe (:obj:`SedParameterEstimationTask`): an instance of :obj:`SedParameterEstimationTask`
     Returns:
         :obj:`dict`: The dictionary format: 
-                      {'id':'parameterEstimationTask1','type':libsedml.SEDML_TASK_PARAMETER_ESTIMATION,'modelReference':'model1','algorithm':dict_algorithm,'objective':'leastSquare',
+                      {'id':'parameterEstimationTask1','type':libsedml.SEDML_TASK_PARAMETER_ESTIMATION,'algorithm':dict_algorithm,'objective':'leastSquare',
                        'listOfAdjustableParameters':[dict_adjustableParameter],'listOfFitExperiments':[dict_fitExperiment]}
     """
     dict_parameterEstimationTask = {}
     dict_parameterEstimationTask['id'] = task_pe.getId()
     dict_parameterEstimationTask['type']=libsedml.SedTypeCode_toString(task_pe.getTypeCode())
-    dict_parameterEstimationTask['modelReference'] = task_pe.getModelReference()
+    # dict_parameterEstimationTask['modelReference'] = task_pe.getModelReference()
     opt_algorithm = task_pe.getAlgorithm()
-    dict_parameterEstimationTask['algorithm'] = _get_dict_algorithm(opt_algorithm)
+    dict_parameterEstimationTask['algorithm'] = get_dict_algorithm(opt_algorithm)
     dict_parameterEstimationTask['objective'] = 'leastSquare' 
     dict_parameterEstimationTask['listOfAdjustableParameters'] = []
     for adjustableParameter in task_pe.getListOfAdjustableParameters():

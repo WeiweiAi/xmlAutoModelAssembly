@@ -2,6 +2,33 @@ import numpy as np
 from scipy.optimize import minimize, Bounds, LinearConstraint
 from .simulator import simulate, External_module,get_observables
 
+# https://docs.scipy.org/doc/scipy/reference/optimize.html
+SCIPY_OPTIMIZE_LOCAL = ['Nelder-Mead','Powell','CG','BFGS','Newton-CG','L-BFGS-B','TNC','COBYLA','SLSQP','trust-constr','dogleg','trust-ncg','trust-exact','trust-krylov']
+KISAO_ALGORITHMS = {'KISAO:0000514': 'Nelder-Mead',
+                    }
+def get_KISAO_parameters_opt(algorithm):
+    """Get the parameters of the KISAO algorithm.
+    Args:
+        algorithm (:obj:`dict`): the algorithm of the simulation, the format is {'kisaoID': , 'name': 'optional,Euler forward method' , 'listOfAlgorithmParameters':[dict_algorithmParameter] }
+         dict_algorithmParameter={'kisaoID':'KISAO:0000483','value':'0.001'}
+    Returns:
+        :obj:`tuple`:
+            * :obj:`str`: the method of the simulation
+            * :obj:`dict`: the parameters of the integrator, the format is {parameter: value}
+    """
+    if algorithm['kisaoID'] == 'KISAO:0000514':
+        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
+        opt_parameters = {}
+        for p in algorithm['listOfAlgorithmParameters']:
+            if p['kisaoID'] == 'KISAO:0000211':
+                opt_parameters['xatol'] = float(p['value'])
+            elif p['kisaoID'] == 'KISAO:0000486':
+                opt_parameters['maxiter'] = float(p['value'])
+    else:
+        print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
+        return None, None
+    
+    return method, opt_parameters
 class ExperimentData(dict):
     def __init__(self):
         self.types = [] # list,  ['mean', 'max', 'min','steady-state','series'] Specify the type of the outputs, which could be mean, max, min, steady state or the raw series of the simulation result
@@ -9,9 +36,9 @@ class ExperimentData(dict):
         self.exp_const_vec = None # The constant measurements, np.ndarray, np.generic
         self.weight_const_vec = None #The scale vector to differentiate the significance of observed values
         self.std_const_vec = None # The standard deviation of constant measurements
+        self.std_series_vec = None # The standard deviation of series measurements
         self.exp_series_vec = None # The series measurements, np.ndarray, np.generic
         self.weight_series_vec = None #"""The scale vector to differentiate the significance of observed series """   
-        self.std_series_vec = None # The standard deviation of series measurements
         self.time_vec = None # The time vector of the series measurements        
         self.cost_type = 'MSE'   # The cost calculation formula type, MSE: Mean Square Error, AE: Absolute Error
 

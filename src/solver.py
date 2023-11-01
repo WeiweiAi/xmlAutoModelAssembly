@@ -18,11 +18,12 @@ def create_sed_results(observables,N):
         sed_results.update({id: np.empty(N+1)})
     return sed_results
 
-def _initialize_module_ode(module,external_variable=None):
+def _initialize_module_ode(module,external_variable=None,parameters={}):
     """Initialize the module with odes.
     Args:
         module(:obj:'module'): the module imported from the generated Python code
         external_variable(:obj:'function'): the function to specify the external variables
+        parameters(:obj:'dict'): the dictionary of parameters, the format is {id:{'name':'variable name','component':'component name','vtype':'state','value':value,'index':index}}
     Returns:    
         :obj:`tuple`:
             * :obj:`list`: the list of states
@@ -37,16 +38,23 @@ def _initialize_module_ode(module,external_variable=None):
         module.initialise_variables(states, rates, variables,external_variable)
     else:    
        module.initialise_variables(states, rates, variables)
-
+    
+    for id, v in parameters.items():
+        if v['type'] == 'state':
+            states[v['index']]=v['value']
+        else:
+           variables[v['index']]=v['value']
+    
     module.compute_computed_constants(variables)
 
     return states, rates, variables 
 
-def _initialize_module_algebraic(module,external_variable=None):
+def _initialize_module_algebraic(module,external_variable=None,parameters={}):
     """Initialize the module with only algebra.
     Args:
         module(:obj:'module'): the module imported from the generated Python code
         external_variable(:obj:'function'): the function to specify the external variables
+        parameters(:obj:'dict'): the dictionary of parameters, the format is {id:{'name':'variable name','component':'component name','vtype':'state','value':value,'index':index}}
     Returns:
         :obj:`list`: the list of variables
     """       
@@ -56,19 +64,23 @@ def _initialize_module_algebraic(module,external_variable=None):
         module.initialise_variables(variables,external_variable)
     else:
         module.initialise_variables(variables)
-
+    
+    for id, v in parameters.items():
+        if v['type'] == 'constant' or v['type'] == 'computed_constant' and v['type'] == 'algebraic':
+           variables[v['index']]=v['value']
+           
     module.compute_computed_constants(variables) 
 
     return variables
 
-def initialize_module(module,external_variable,mtype,observables,t0,N):
+def initialize_module(module,external_variable,mtype,observables,t0,N,parameters={}):
     """Initialize the module.
     Args:
         module(:obj:'module'): the module imported from the generated Python code
         external_variable(:obj:'function'): the function to specify the external variables
         mtype(:obj:'str'): the type of the model, the value is either 'ode' or 'algebraic'
         observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
+                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index,'value':value}}
         t0(:obj:'float'): the initial time
         N(:obj:'int'): the number of steps
     Returns:
@@ -76,10 +88,10 @@ def initialize_module(module,external_variable,mtype,observables,t0,N):
     """
     sed_results=create_sed_results(observables,N)
     if mtype=='ode':
-        states, rates, variables=_initialize_module_ode(module,external_variable)
+        states, rates, variables=_initialize_module_ode(module,external_variable,parameters)
         current_state = (t0, states, rates, variables, 0,sed_results)
     elif mtype=='algebraic':
-        variables=_initialize_module_algebraic(module,external_variable)
+        variables=_initialize_module_algebraic(module,external_variable,parameters)
         current_state = (t0, None, None, variables, 0, sed_results)
     else:
         print('The model type {} is not supported!'.format(mtype))

@@ -123,6 +123,7 @@ class SimulationSettings():
         self.output_end_time = 10
         self.number_of_steps = 1000
         self.step=0.1
+        self.tspan=[]
         self.method='Euler forward method' 
         self.integrator_parameters={}       
 
@@ -248,7 +249,7 @@ def get_variable_indices(analyser, model,variables_info):
     Args:
         analyser (:obj:`Analyser`): the Analyser instance of the CellML model
         model (:obj:`Model`): the CellML model
-        variables_info (:obj:`list` of :obj:`tuple`): the list of variables, each variable is a tuple of (component_name, variable_name)
+        variables_info (:obj:`list` of :obj:`tuple`): the list of variables, each variable is a tuple of (component_name, variable_name). Note: order matters
     Returns:
         :obj:`list` of :obj:`int`: the indices of the variables
     """
@@ -296,22 +297,22 @@ def get_observables(analyser, model, variables_info):
     Args:
         analyser (:obj:`Analyser`): the Analyser instance of the CellML model
         model (:obj:`Model`): the CellML model
-        variables_info (:obj:`dict` ): {'v':(observable_component,observable_name)}
+        variables_info (:obj:`dict` ): {'v':{'name': , 'component': }}
     Returns:
         :obj:`dict`: the observables of the simulation, the format is {id:{'name': , 'component': , 'index': , 'type': }}; False if a required variable is not found
     """
     observables = {}
     for key,variable_info in variables_info.items():
-        variable=_find_variable(model, variable_info[0],variable_info[1])
+        variable=_find_variable(model, variable_info['component'],variable_info['name'])
         index, vtype=get_index_type_for_equivalent_variable(analyser,variable)
         if vtype != 'unknown':
-            observables[key]={'name':variable_info[1],'component':variable_info[0],'index':index,'type':vtype}
+            observables[key]={'name':variable_info['name'],'component':variable_info['component'],'index':index,'type':vtype}
         else:
             print("Unable to find a required variable in the generated code")
-            return False
+            raise ValueError("Unable to find a required variable in the generated code")
     return observables
 
-def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None):
+def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters={}):
     """Simulate the model using the UniformTimeCourse algorithm.
     Args:
         mtype (:obj:`str`): the type of the model
@@ -325,7 +326,7 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
 
     external_variable,external_update = get_externals(external_module)
     if current_state is None:
-        current_state=initialize_module(module,external_variable,mtype,observables,sim_setting.initial_time,sim_setting.number_of_steps)
+        current_state=initialize_module(module,external_variable,mtype,observables,sim_setting.initial_time,sim_setting.number_of_steps,parameters)
 
     output_step_size=(sim_setting.output_end_time-sim_setting.output_start_time)/sim_setting.number_of_steps
 
@@ -351,6 +352,48 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
     
     return current_state
 
+def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters={}):
+    """Simulate the model using the UniformTimeCourse algorithm.
+    Args:
+        mtype (:obj:`str`): the type of the model
+        module (:obj:`module`): the module containing the Python code
+        sim_setting (:obj:`SimulationSettings`): the simulation settings
+        observables (:obj:`dict`): the observables of the simulation, the format is {id:{'name': , 'component': , 'index': , 'type': }}
+        external_module (:obj:`External_module`): the external module
+    Returns:
+        :obj:`dict`: the results of the simulation, the format is {id:numpy.ndarray}
+    """
+    
+    number_of_steps=len(sim_setting.tspan)-1
+    
+    external_variable,external_update = get_externals(external_module)
+    if current_state is None:
+        current_state=initialize_module(module,external_variable,mtype,observables,0,number_of_steps,parameters)
+
+    output_step_size=(sim_setting.tspan[-1]-sim_setting.tspan[0])/number_of_steps
+
+    if 'step_size' in sim_setting.integrator_parameters:
+        step_size=sim_setting.integrator_parameters['step_size']
+    else:
+        step_size=output_step_size  
+    
+    if mtype=='ode':
+        if sim_setting.method=='Euler forward method':
+            for i in number_of_steps:
+                current_state=solve_euler(module, external_update, observables, current_state, sim_setting.tspan[i],sim_setting.tspan[i+1],1,step_size)                   
+        elif sim_setting.method in SCIPY_SOLVERS:
+            for i in number_of_steps:   
+                current_state=solve_scipy(module, external_update, observables, current_state, sim_setting.tspan[i],sim_setting.tspan[i+1],1,sim_setting.method,sim_setting.integrator_parameters)
+        else:
+            print('The method {} is not supported!'.format(sim_setting.method))
+            return False
+    elif mtype=='algebraic':
+        current_state=algebra_evaluation(module, external_update, observables,current_state, number_of_steps)
+    else:
+        print('The model type {} is not supported!'.format(mtype))
+        return False
+    
+    return current_state
 
 
 

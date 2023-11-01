@@ -13,8 +13,11 @@ from lxml import etree
 from .report import pad_arrays_to_consistent_shapes, writeReport
 from.analyser import analyse_model_full,parse_model
 from.coder import writePythonCode
-from.simulator import load_module,External_module,sim_UniformTimeCourse,getSimSettingFromDict,get_observables,get_mtype
-from .sedEditor import get_dict_simulation
+from.simulator import load_module,External_module,sim_UniformTimeCourse,getSimSettingFromDict,get_observables,get_mtype,sim_TimeCourse,SimulationSettings,get_KISAO_parameters
+from .optimiser import get_KISAO_parameters_opt
+from .sedEditor import get_dict_simulation, get_dict_algorithm
+from scipy.optimize import minimize, Bounds
+import pandas
 
 CELLML2NAMESPACE ={"cellml":"http://www.cellml.org/cellml/2.0#"}
 
@@ -71,7 +74,8 @@ def exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=No
         elif task.isSedRepeatedTask ():
             task_var_results = exec_repeated_task(doc,task,model_base_dir,external_variables_info,external_variables_values, model_etrees=model_etrees)
         elif task.isSedParameterEstimationTask ():
-            pass
+            res=exec_parameterEstimationTask( doc,task, original_model,model_etree, working_dir, model_base_dir,external_variables_info,external_variables_values)
+            
         else:  # pragma: no cover: already validated by :obj:`get_models_referenced_by_task`
             raise NotImplementedError('Tasks of type {} are not supported.'.format(task.getTypeCode () ))
         
@@ -148,11 +152,8 @@ def exec_task(doc,task, original_model,model_etree, model_base_dir,external_vari
     except ValueError as exception:
         print(exception)
         return None
-    observables_info = {}
-    for key,observable_info in variables_info.items():
-        observables_info[key]=(observable_info['component'],observable_info['name'])
-
-    observables=get_observables(analyser,cellml_model,observables_info)
+    
+    observables=get_observables(analyser,cellml_model,variables_info)
     if not observables:
         print('Not all observables found in the Python module!')
         return None
@@ -202,8 +203,10 @@ def get_variable_info_CellML(task_variables,model_etree):
     """
     variable_info={}
     for v in task_variables:
-        target=v.getTarget ()
-        variable_element = model_etree.xpath(v.getTarget (),namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
+        if v.getTarget.rpartition('/@')[-1]=='initial_value': # target initial value instead of variable
+            variable_element = model_etree.xpath(v.getTarget().rpartition('/@')[-1],namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
+        else:
+            variable_element = model_etree.xpath(v.getTarget (),namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
         if variable_element is False:
             raise ValueError('The variable {} is not found!'.format(v.getTarget () ))
         else:
@@ -373,6 +376,232 @@ def exec_repeated_task(doc,task,working_dir,external_variables_info,
 
     # return the results of the task
     return variable_results
+
+def get_variables_for_data_generator(data_generator):
+    """ Get the variables involved in a collection of generators
+
+    Args:
+        data_generators (:obj:`SedDataGenerator`): data generator
+
+    Returns:
+        :obj:`set` of :obj:`SedVariables`: variables id involved in the data generators
+    """
+    variables = set()
+    sedVariables=[]    
+    for sedVariable in data_generator.getListOfVariables ():
+        if sedVariable.getId () not in variables:
+            sedVariables.append(sedVariable)
+        variables.add(sedVariable.getId ())
+    return sedVariables 
+
+def exec_parameterEstimationTask( doc,task, original_model,model_etree, working_dir, model_base_dir,external_variables_info=[],external_variables_values=[]):
+
+    cellml_model,issues=parse_model(original_model.getSource(), True)
+    if not cellml_model:
+        print('Model parsing failed!',issues)
+        return None
+    # analyse the model
+    adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(doc,model_etree,task)
+    for key,adjustableParameter_info in adjustableParameters_info.items():
+        external_variables_info.append(adjustableParameter_info)
+
+    analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
+    if not analyser:
+        print('Model analysis failed!',issues)
+        return None
+    else:
+        mtype=get_mtype(analyser)
+        if mtype not in ['ode','algebraic']:
+            print('Model type is not supported!')
+            return None
+    # write Python code
+    full_path = model_base_dir+'/'+original_model.getId()+'.py'
+    writePythonCode(analyser, full_path)
+    try:
+        module=load_module(full_path)
+    except Exception as exception:
+        print(exception)
+        return None
+    
+    method, opt_parameters=get_KISAO_parameters_opt(task.getAlgorithm())
+
+    dfDict={}
+    for i in range(doc.getListOfDataDescriptions()):
+        dataDescription=doc.getDataDescription(i)
+        dfDict.update(get_dfDict_from_dataDescription(dataDescription, working_dir))
+    
+    fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
+    
+    bounds=Bounds(lowerBound ,upperBound)
+
+    res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
+                 method=method,bounds=bounds, options=opt_parameters)
+
+    return res
+
+def objective_function(param_vals, analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments):
+    residuals_sum=0
+    external_module=External_module(analyser, cellml_model, external_variables_info,external_variables_values+param_vals)
+
+    for i in len(experimentReferences):
+        for experimentReference in experimentReferences[i]:
+            sim_setting=SimulationSettings()
+            simulation_type=fitExperiments[experimentReference]['type']
+            sim_setting.tspan=fitExperiments[experimentReference]['tspan']
+            dict_algorithm=fitExperiments[experimentReference]['algorithm']
+            sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)            
+            fitness_info=fitExperiments[experimentReference]['fitness_info']
+            parameters=fitExperiments[experimentReference]['parameters']
+            observables=fitness_info[0]
+            observables_weight=fitness_info[1]
+            observables_exp=fitness_info[2]
+        
+        if simulation_type=='TimeCourse':
+            current_state=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+            sed_results = current_state[-1]
+            residuals={}
+            for key, value in sed_results.items():
+                residuals[key]=value-observables_exp[key]
+                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+    
+    return residuals_sum
+
+def get_adjustableParameters(doc,model_etree,task):
+    adjustableParameters_info={}
+    experimentReferences={}
+    lowerBound=[]
+    upperBound=[]
+    initial_value=[]
+    for i in range(task.getListOfAdjustableParameters()):
+        adjustableParameter=task.getAdjustableParameter(i)
+        adjustableParameter_target=adjustableParameter.getTarget()
+        dataGenerator=doc.getDataGenerator(adjustableParameter_target)
+        sedVars=get_variables_for_data_generator(dataGenerator)
+        try:
+            variables_info = get_variable_info_CellML(sedVars,model_etree)
+        except ValueError as exception:
+            raise exception
+        for key,variable_info in variables_info.items(): # should be only one variable
+            adjustableParameters_info[i]=(variable_info['component'],variable_info['name'])
+
+        bonds=adjustableParameter.getBounds()
+        lowerBound.append(bonds.getLowerBound ())
+        upperBound.append(bonds.getUpperBound ())
+        if adjustableParameter.setInitialValue():
+            initial_value.append(adjustableParameter.getInitialValue())
+        else:
+            initial_value.append(bonds.getLowerBound ())
+        experimentReferences[i]=[]
+        if adjustableParameter.getNumExperimentReferences()>0:
+            for experiment in adjustableParameter.getListOfExperimentReferences ():
+                experimentReferences[i].append(experiment)
+        else:
+            for experiment in task.getListOfExperiments():
+                experimentReferences[i].append(experiment.getId())
+        
+    return adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value
+
+
+def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
+    fitExperiments={}
+    for fitExperiment in task.getListOfFitExperiments():
+        if fitExperiment.getTypeAsString ()=='SteadyState':
+            simulation_type='steadyState'
+        elif fitExperiment.getTypeAsString ()=='TimeCourse':
+            simulation_type='TimeCourse'
+        else:
+            raise NotImplementedError('Experiment type {} is not supported!'.format(fitExperiment.getTypeAsString ()))
+        fitExperiments[fitExperiment.getId()]['type']=simulation_type
+        sed_algorithm = fitExperiment.getAlgorithm()
+        fitExperiments[fitExperiment.getId()]['algorithm']=get_dict_algorithm(sed_algorithm)
+        fitExperiments[fitExperiment.getId()]['tspan']=[]
+        fitExperiments[fitExperiment.getId()]['parameters']={}
+        observables_exp={}
+        observables_weight={}
+        observables_info={}
+
+        for fitMapping in fitExperiment.getListOfFitMappings ():
+            if fitMapping.getTypeAsString ()=='time':
+                tspan=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                # should be 1D array
+                if tspan.ndim>1:
+                    raise ValueError('The time course {} is not 1D array!'.format(fitMapping.getDataSource()))
+                else:
+                    fitExperiments[fitExperiment.getId()]['tspan']=tspan
+
+            elif fitMapping.getTypeAsString ()=='experimentalCondition':
+                initial_value_=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                if initial_value_.ndim>1:
+                    raise ValueError('The experimental condition {} is not 1D array!'.format(fitMapping.getDataSource()))
+                elif len(initial_value_)==1:
+                    initial_value=initial_value_[0]
+                else:
+                    raise ValueError('The experimental condition {} is not a scalar!'.format(fitMapping.getDataSource()))
+                
+                dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
+                sedVars=get_variables_for_data_generator(dataGenerator)
+                if len(sedVars)>1:
+                    raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))
+                else:
+                    try:
+                        parameters_info = get_variable_info_CellML(sedVars,model_etree)
+                    except ValueError as exception:
+                        raise exception
+                    try:
+                        observables=get_observables(analyser, cellml_model, parameters_info)
+                    except ValueError as exception:
+                        raise exception                    
+                    fitExperiments[fitExperiment.getId()]['parameters'].update(observables)
+                    for sedVar in sedVars:
+                        fitExperiments[fitExperiment.getId()]['parameters'][sedVar.getId()]['value']=initial_value                                       
+
+            elif fitMapping.getTypeAsString ()=='observable':
+
+                observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                if observable_exp.ndim>1:
+                    raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))
+                
+                dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
+                sedVars=get_variables_for_data_generator(dataGenerator)
+                if len(sedVars)>1:
+                    raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))
+                else:
+                    try:
+                        parameters_info = get_variable_info_CellML(sedVars,model_etree)
+                    except ValueError as exception:
+                        raise exception
+                    try:
+                        observables=get_observables(analyser, cellml_model, parameters_info)
+                    except ValueError as exception:
+                        raise exception  
+                                      
+                    observables_info.update(observables)
+                key=observables.keys()[0]
+
+                if fitMapping.isSetWeight():
+                    weight=fitMapping.getWeight()
+                    observables_weight.update({key:weight})
+                elif fitMapping.setPointWeight():
+                    pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
+                    if pointWeight.dim>1:
+                        raise ValueError('The point weight {} is not 1D array!'.format(fitMapping.getPointWeight()))
+                    else:
+                        # observable_exp and pointWeight should have the same length
+                        if len(observable_exp)!=len(pointWeight):
+                            raise ValueError('The observable {} and point weight {} do not have the same length!'.format(fitMapping.getDataSource(),fitMapping.getPointWeight()))
+                        else:
+                            observables_weight.update({key:pointWeight})
+                else:
+                    raise ValueError('Fit mapping {} does not have a weight!'.format(fitMapping.getId()))
+                      
+                observables_exp.update({key:observable_exp})
+
+            else:
+                raise NotImplementedError('Fit mapping type {} is not supported!'.format(fitMapping.getTypeAsString ()))
+            
+        fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp) 
+
+    return fitExperiments   
 
 
 def exec_report(report, variable_results, base_out_path, rel_out_path, formats, task):
@@ -1213,6 +1442,130 @@ def get_value_of_variable_model_xml_targets(variable, model_etrees):
         raise ValueError('Target `{}` in model `{}` must be a float.'.format(variable.getTarget (), variable.getModelReference()))
 
     return value
+
+def get_dfDict_from_dataDescription(dataDescription, working_dir):
+    dfDict={}
+    source = dataDescription.getSource ()
+    if re.match(r'^http(s)?://', source, re.IGNORECASE):
+        response = requests.get(source)
+        try:
+            response.raise_for_status()
+        except Exception:
+            raise ValueError('Model could not be downloaded from `{}`.'.format(source))
+
+        temp_file, temp_data_source = tempfile.mkstemp()
+        os.close(temp_file)
+        with open(temp_data_source, 'wb') as file:
+            file.write(response.content)
+        filename = temp_data_source
+    else:
+        if os.path.isabs(source):
+            filename = source
+        else:
+            filename = os.path.join(working_dir, source)
+
+        if not os.path.isfile(os.path.join(working_dir, source)):
+            raise FileNotFoundError('Data source file `{}` does not exist.'.format(source))
+    
+    df = pandas.read_csv(filename,header=0, sep=',' if format == 'csv' else '\t')
+    dfDict[dataDescription.getId()]=df
+    return dfDict
+
+def get_value_of_dataSource(doc, dataSourceID,dfDict):
+    
+    dim1_value=None
+    dim2_value=None
+    dim1_present=False
+    dim2_present=False
+    dim1_startIndex=None
+    dim1_endIndex=None
+    dim2_startIndex=None
+    dim2_endIndex=None
+    for dataDescription in doc.getListOfDataDescriptions ():
+        for dataSource in dataDescription.getListOfDataSources ():
+            if dataSource.getId () == dataSourceID: # expect only one data source
+                df=dfDict[dataDescription.getId()]
+                dimensionDescription=dataDescription.getDimensionDescription ()
+                dim1_index=dimensionDescription.getId() 
+                dim2=dimensionDescription.getCompositeDescription()
+                dim2_index=dim2.getId()             
+                if dataSource.isSetIndexSet ():# expect only using slice
+                    raise NotImplementedError('IndexSet is not supported.')
+                else:
+                    for sedSlice in dataSource.getListOfSlices (): # up to two slices supported
+                        if sedSlice.getReference ()==dim1_index:
+                            dim1_present=True
+                            if sedSlice.isSetValue ():
+                                dim1_value=sedSlice.getValue ()
+                            if sedSlice.isSetStartIndex ():
+                                dim1_startIndex=sedSlice.getStartIndex ()
+                            if sedSlice.isSetEndIndex ():
+                                dim1_endIndex=sedSlice.getEndIndex ()
+                        elif sedSlice.getReference ()==dim2_index:
+                            dim2_present=True
+                            if sedSlice.isSetValue (): 
+                                dim2_value=sedSlice.getValue ()
+                            if sedSlice.isSetStartIndex ():
+                                dim2_startIndex=sedSlice.getStartIndex ()
+                            if sedSlice.isSetEndIndex ():
+                                dim2_endIndex=sedSlice.getEndIndex ()
+                        else:
+                            raise NotImplementedError('up to two slices supported')
+
+                    if dim1_present and (not dim2_present): 
+                        # get the value(s) at index=dim1_value or all values if dim1_value is not set then subdivide the values according to startIndex and endIndex   
+                        if dim1_value:
+                            value=df.iloc[[dim1_value]]
+                        elif dim1_startIndex and dim1_endIndex:
+                            value=df.iloc[dim1_startIndex:dim1_endIndex]
+                        elif dim1_startIndex and (not dim1_endIndex):
+                            value=df.iloc[dim1_startIndex:]
+                        elif (not dim1_startIndex) and dim1_endIndex:
+                            value=df.iloc[:dim1_endIndex]
+                        else:
+                            value=df
+                        return value.to_numpy()
+                    
+                    elif dim2_present and (not dim1_present):
+                        # get the value(s) of the column and then subdivide the values according to startIndex and endIndex
+                        if dim2_value:
+                            columnName=dim2_value
+                            df_selected=df[columnName]
+                            if dim2_startIndex and dim2_endIndex:
+                                value=df_selected.iloc[dim2_startIndex:dim2_endIndex]
+                            elif dim2_startIndex and (not dim2_endIndex):
+                                value=df_selected.iloc[dim2_startIndex:]
+                            elif (not dim2_startIndex) and dim2_endIndex:
+                                value=df_selected.iloc[:dim2_endIndex]
+                            else:
+                                value=df_selected
+                            return value.to_numpy()
+                        
+                    elif dim1_present and dim2_present:
+                        # get a single value at index=dim1_value and column=dim2_value
+                        columnName=dim2_value
+                        df_selected=df[columnName]
+                        if dim1_value:
+                            df_selected=df_selected.iloc[[dim1_value]]
+                        return df_selected.to_numpy()
+                    else:
+                        raise ValueError('Data source `{}` is not defined.'.format(dataSourceID))
+
+                              
+                                          
+                       
+    
+
+                        
+                            
+                            
+                        
+
+                 
+    
+
+
+
 
 def calc_compute_model_change_new_value(setValue, variable_values=None, range_values=None):
     """ Calculate the new value of a compute model change
