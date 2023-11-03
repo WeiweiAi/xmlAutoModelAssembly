@@ -203,8 +203,9 @@ def get_variable_info_CellML(task_variables,model_etree):
     """
     variable_info={}
     for v in task_variables:
-        if v.getTarget.rpartition('/@')[-1]=='initial_value': # target initial value instead of variable
-            variable_element = model_etree.xpath(v.getTarget().rpartition('/@')[-1],namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
+        if v.getTarget().rpartition('/@')[-1]=='initial_value': # target initial value instead of variable
+            vtemp=v.getTarget().rpartition('/@')
+            variable_element = model_etree.xpath(vtemp[0],namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
         else:
             variable_element = model_etree.xpath(v.getTarget (),namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
         if variable_element is False:
@@ -215,6 +216,7 @@ def get_variable_info_CellML(task_variables,model_etree):
                 'component': variable_element.getparent().attrib['name']
             }
     return variable_info
+
 
 def exec_repeated_task(doc,task,working_dir,external_variables_info,
                                                   model_etrees=None,
@@ -423,11 +425,11 @@ def exec_parameterEstimationTask( doc,task, original_model,model_etree, working_
         print(exception)
         return None
     
-    method, opt_parameters=get_KISAO_parameters_opt(task.getAlgorithm())
+    dict_algorithm=get_dict_algorithm(task.getAlgorithm())
+    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
 
     dfDict={}
-    for i in range(doc.getListOfDataDescriptions()):
-        dataDescription=doc.getDataDescription(i)
+    for dataDescription in doc.getListOfDataDescriptions() :
         dfDict.update(get_dfDict_from_dataDescription(dataDescription, working_dir))
     
     fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
@@ -441,9 +443,10 @@ def exec_parameterEstimationTask( doc,task, original_model,model_etree, working_
 
 def objective_function(param_vals, analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments):
     residuals_sum=0
-    external_module=External_module(analyser, cellml_model, external_variables_info,external_variables_values+param_vals)
+    a=external_variables_values+param_vals.tolist()
+    external_module=External_module(analyser, cellml_model, external_variables_info,a)
 
-    for i in len(experimentReferences):
+    for i in range(len(experimentReferences)):
         for experimentReference in experimentReferences[i]:
             sim_setting=SimulationSettings()
             simulation_type=fitExperiments[experimentReference]['type']
@@ -456,8 +459,8 @@ def objective_function(param_vals, analyser, cellml_model, mtype, module, extern
             observables_weight=fitness_info[1]
             observables_exp=fitness_info[2]
         
-        if simulation_type=='TimeCourse':
-            current_state=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+        if simulation_type=='timeCourse':
+            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
             sed_results = current_state[-1]
             residuals={}
             for key, value in sed_results.items():
@@ -472,13 +475,10 @@ def get_adjustableParameters(doc,model_etree,task):
     lowerBound=[]
     upperBound=[]
     initial_value=[]
-    for i in range(task.getListOfAdjustableParameters()):
+    for i in range(len(task.getListOfAdjustableParameters())):
         adjustableParameter=task.getAdjustableParameter(i)
-        adjustableParameter_target=adjustableParameter.getTarget()
-        dataGenerator=doc.getDataGenerator(adjustableParameter_target)
-        sedVars=get_variables_for_data_generator(dataGenerator)
         try:
-            variables_info = get_variable_info_CellML(sedVars,model_etree)
+            variables_info = get_variable_info_CellML([adjustableParameter],model_etree)
         except ValueError as exception:
             raise exception
         for key,variable_info in variables_info.items(): # should be only one variable
@@ -487,14 +487,14 @@ def get_adjustableParameters(doc,model_etree,task):
         bonds=adjustableParameter.getBounds()
         lowerBound.append(bonds.getLowerBound ())
         upperBound.append(bonds.getUpperBound ())
-        if adjustableParameter.setInitialValue():
+        if adjustableParameter.isSetInitialValue ():
             initial_value.append(adjustableParameter.getInitialValue())
         else:
             initial_value.append(bonds.getLowerBound ())
         experimentReferences[i]=[]
         if adjustableParameter.getNumExperimentReferences()>0:
             for experiment in adjustableParameter.getListOfExperimentReferences ():
-                experimentReferences[i].append(experiment)
+                experimentReferences[i].append(experiment.getExperimentId () )
         else:
             for experiment in task.getListOfExperiments():
                 experimentReferences[i].append(experiment.getId())
@@ -505,12 +505,13 @@ def get_adjustableParameters(doc,model_etree,task):
 def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
     fitExperiments={}
     for fitExperiment in task.getListOfFitExperiments():
-        if fitExperiment.getTypeAsString ()=='SteadyState':
+        if fitExperiment.getTypeAsString ()=='steadyState':
             simulation_type='steadyState'
-        elif fitExperiment.getTypeAsString ()=='TimeCourse':
-            simulation_type='TimeCourse'
+        elif fitExperiment.getTypeAsString ()=='timeCourse':
+            simulation_type='timeCourse'
         else:
             raise NotImplementedError('Experiment type {} is not supported!'.format(fitExperiment.getTypeAsString ()))
+        fitExperiments[fitExperiment.getId()]={}
         fitExperiments[fitExperiment.getId()]['type']=simulation_type
         sed_algorithm = fitExperiment.getAlgorithm()
         fitExperiments[fitExperiment.getId()]['algorithm']=get_dict_algorithm(sed_algorithm)
@@ -537,7 +538,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     initial_value=initial_value_[0]
                 else:
                     raise ValueError('The experimental condition {} is not a scalar!'.format(fitMapping.getDataSource()))
-                
+                a=fitMapping.getTarget()
                 dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
                 sedVars=get_variables_for_data_generator(dataGenerator)
                 if len(sedVars)>1:
@@ -561,6 +562,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                 if observable_exp.ndim>1:
                     raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))
                 
+                a=fitMapping.getTarget()
                 dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
                 sedVars=get_variables_for_data_generator(dataGenerator)
                 if len(sedVars)>1:
@@ -576,14 +578,14 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                         raise exception  
                                       
                     observables_info.update(observables)
-                key=observables.keys()[0]
+                key=list(observables.keys())[0]
 
                 if fitMapping.isSetWeight():
                     weight=fitMapping.getWeight()
                     observables_weight.update({key:weight})
-                elif fitMapping.setPointWeight():
+                elif fitMapping.isSetPointWeight ():
                     pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
-                    if pointWeight.dim>1:
+                    if pointWeight.ndim>1:
                         raise ValueError('The point weight {} is not 1D array!'.format(fitMapping.getPointWeight()))
                     else:
                         # observable_exp and pointWeight should have the same length
@@ -1467,7 +1469,7 @@ def get_dfDict_from_dataDescription(dataDescription, working_dir):
         if not os.path.isfile(os.path.join(working_dir, source)):
             raise FileNotFoundError('Data source file `{}` does not exist.'.format(source))
     
-    df = pandas.read_csv(filename,header=0, sep=',' if format == 'csv' else '\t')
+    df = pandas.read_csv(filename, skipinitialspace=True,encoding='utf-8')
     dfDict[dataDescription.getId()]=df
     return dfDict
 
@@ -1486,9 +1488,10 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
             if dataSource.getId () == dataSourceID: # expect only one data source
                 df=dfDict[dataDescription.getId()]
                 dimensionDescription=dataDescription.getDimensionDescription ()
-                dim1_index=dimensionDescription.getId() 
-                dim2=dimensionDescription.getCompositeDescription()
-                dim2_index=dim2.getId()             
+                dim1_Description=dimensionDescription.get(0)
+                dim1_index=dim1_Description.getId() 
+                dim2_Description=dim1_Description.get(0)
+                dim2_index=dim2_Description.getId()             
                 if dataSource.isSetIndexSet ():# expect only using slice
                     raise NotImplementedError('IndexSet is not supported.')
                 else:

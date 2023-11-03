@@ -1,62 +1,156 @@
 from scipy.integrate import ode
 import numpy as np
+from pathlib import PurePath
+import importlib.util
+import os
 
-# Modified from https://github.com/hsorby/cellsolver.git
-# https://github.com/hsorby/cellsolver.git is licensed under Apache License 2.0
+"""
+======
+Solver
+======
+The solver module provides the functionality to solve a system.
+The system is given as a python module generated from a CellML model.
+The python module is assumed to be generated using libCellML (version 0.5.0).
+The system can be either ODE or algebraic equations.
+The system can be solved using Euler method or scipy supported solvers.
+The code is modified from
+https://github.com/hsorby/cellsolver.git, which is licensed under Apache License 2.0.
 
-def create_sed_results(observables,N):
-    """Create the results dictionary to hold the results
-    Args:
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
-        N(:obj:'int'): the number of steps
-    Returns:
-        :obj:`dict`: the dictionary of array of results, the format is {id:numpy.ndarray}
-    """       
-    sed_results={}
+"""
+
+def load_module(full_path):
+    """ Load a module from a file.
+
+    Parameters
+    ----------
+    full_path : str
+        The full path to the file containing the module.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist, a FileNotFoundError will be raised.
+
+    Returns
+    -------
+    object
+        The loaded module.    
+    """
+
+    if not os.path.isfile(full_path):
+        raise FileNotFoundError('Model source file `{}` does not exist.'.format(full_path))
+    
+    module_name = PurePath(full_path).stem
+    spec = importlib.util.spec_from_file_location(module_name, full_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+def create_sed_results(observables, N):
+    """
+    Create a dictionary to hold the simulation results for each observable.
+
+    Parameters
+    ----------
+    observables : dict
+        A dictionary containing the observables to be recorded.
+    N : int
+        The number of time points to simulate.
+
+    Returns
+    -------
+    dict
+        A dictionary to hold the simulation results for each observable.
+        The dictionary is of the form {id: numpy.ndarray} where id is the
+        identifier of the observable and the numpy.ndarray is of size N+1.
+    """
+    
+    sed_results = {}
     for id in observables.keys():
         sed_results.update({id: np.empty(N+1)})
     return sed_results
 
-def _initialize_module_ode(module,external_variable=None,parameters={}):
-    """Initialize the module with odes.
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_variable(:obj:'function'): the function to specify the external variables
-        parameters(:obj:'dict'): the dictionary of parameters, the format is {id:{'name':'variable name','component':'component name','vtype':'state','value':value,'index':index}}
-    Returns:    
-        :obj:`tuple`:
-            * :obj:`list`: the list of states
-            * :obj:`list`: the list of rates
-            * :obj:`list`: the list of variables
+def _initialize_module_ode(module, voi=0, external_variable=None, parameters={}):
+    """
+    Initialize the module with ODEs.
+
+    Parameters
+    ----------
+    module : object
+        The module to be initialized.
+    voi : float, optional
+        The initial value of the independent variable. Default is 0.
+    external_variable : object, optional
+        The function to specify external variable.
+    parameters : dict, optional
+        The information to modify the parameters. 
+        The format is {id:{'name':'variable name','component':'component name',
+        'vtype':'state','value':value,'index':index}}
+    
+    Raises
+    ------
+    ValueError
+        If the initial value of voi or external variable is specified in the parameters, 
+        a ValueError will be raised.
+        
+    Returns
+    -------
+    tuple
+        A tuple containing the initialized states, rates, and variables.
+
+    Notes
+    -----
+    If the initial value of a state variable is specified in the parameters, 
+    the initial value may not be modified accordingly.
     """
     rates = module.create_states_array()
     states = module.create_states_array()
     variables = module.create_variables_array()
 
     if external_variable:
-        module.initialise_variables(states, rates, variables,external_variable)
+        module.initialise_variables(voi,states, rates, variables,external_variable)
     else:    
-       module.initialise_variables(states, rates, variables)
+       module.initialise_variables(voi,states, rates, variables)
     
     for id, v in parameters.items():
         if v['type'] == 'state':
             states[v['index']]=v['value']
-        else:
+        elif v['type'] == 'constant' or v['type'] == 'computed_constant' and v['type'] == 'algebraic':
            variables[v['index']]=v['value']
+        elif v['type'] == 'variable_of_integration' or v['type'] == 'external':
+            raise ValueError('The initial value of voi or external variable cannot be modified!')
+        else:
+            raise ValueError('The parameter type {} of is not supported!'.format(v['type']))
     
     module.compute_computed_constants(variables)
 
-    return states, rates, variables 
+    return states, rates, variables
 
 def _initialize_module_algebraic(module,external_variable=None,parameters={}):
-    """Initialize the module with only algebra.
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_variable(:obj:'function'): the function to specify the external variables
-        parameters(:obj:'dict'): the dictionary of parameters, the format is {id:{'name':'variable name','component':'component name','vtype':'state','value':value,'index':index}}
-    Returns:
-        :obj:`list`: the list of variables
+    """
+    Initialize the module with only algebraic equations.
+
+    Parameters
+    ----------
+    module : object
+        The module to be initialized.
+    external_variable : object, optional
+        The function to specify external variable.
+    parameters : dict, optional
+        The information to modify the parameters. 
+        The format is {id:{'name':'variable name','component':'component name',
+        'vtype':'state','value':value,'index':index}}
+    
+    Raises
+    ------
+    ValueError
+        If other types of variables are specified in the parameters, 
+        a ValueError will be raised.
+    Returns
+    -------
+    list
+        A list containing the initialized variables.
     """       
     variables = module.create_variables_array()
 
@@ -68,48 +162,88 @@ def _initialize_module_algebraic(module,external_variable=None,parameters={}):
     for id, v in parameters.items():
         if v['type'] == 'constant' or v['type'] == 'computed_constant' and v['type'] == 'algebraic':
            variables[v['index']]=v['value']
+        else:
+            raise ValueError('The parameter type {} is not supported!'.format(v['type']))
            
     module.compute_computed_constants(variables) 
 
     return variables
 
-def initialize_module(module,external_variable,mtype,observables,t0,N,parameters={}):
-    """Initialize the module.
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_variable(:obj:'function'): the function to specify the external variables
-        mtype(:obj:'str'): the type of the model, the value is either 'ode' or 'algebraic'
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index,'value':value}}
-        t0(:obj:'float'): the initial time
-        N(:obj:'int'): the number of steps
-    Returns:
-        :obj:`tuple`: the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
+def initialize_module(mtype, observables, N, module, voi=0, external_variable=None, parameters={}):
     """
-    sed_results=create_sed_results(observables,N)
+    Initializes a module based on the given model type and parameters.
+
+    Parameters
+    ----------
+    mtype : str
+        The type of model to initialize ('ode' or 'algebraic').
+    observables : dict
+        A dictionary containing the observables to be recorded.
+    N : int
+        The number of simulation steps.
+    module : object
+        The module to initialize.
+    voi : float, optional
+        The initial value of the variable of integration. Defaults to 0.
+    external_variable : object, optional
+        The function to specify external variable.
+    parameters : dict, optional
+        The information to modify the parameters. 
+        The format is {id:{'name':'variable name','component':'component name',
+        'vtype':'state','value':value,'index':index}}
+    
+    Raises
+    ------
+    ValueError
+        If the model type is not supported, a ValueError will be raised.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
+    """
+    sed_results=create_sed_results(observables, N)
+
     if mtype=='ode':
-        states, rates, variables=_initialize_module_ode(module,external_variable,parameters)
-        current_state = (t0, states, rates, variables, 0,sed_results)
+        try:
+            states, rates, variables=_initialize_module_ode(module,voi,external_variable,parameters)
+        except ValueError as e:
+            raise ValueError(e)         
+        current_state = (voi, states, rates, variables, 0,sed_results)
+
     elif mtype=='algebraic':
-        variables=_initialize_module_algebraic(module,external_variable,parameters)
-        current_state = (t0, None, None, variables, 0, sed_results)
+        try:
+            variables=_initialize_module_algebraic(module,external_variable,parameters)
+        except ValueError as e:
+            raise ValueError(e)
+        current_state = (voi, None, None, variables, 0, sed_results)
     else:
-        print('The model type {} is not supported!'.format(mtype))
-        return False
+        raise ValueError('The model type {} is not supported!'.format(mtype))
+    
     return current_state
 
-def _update_rates(voi, states, rates, variables, module, external_variable=None):
-    """ Update the module.
-    Args:
-        voi(:obj:'float'): the variable of integration
-        states(:obj:'list'): the list of states
-        rates(:obj:'list'): the list of rates
-        variables(:obj:'list'): the list of variables
-        module(:obj:'module'): the module imported from the generated Python code
-        external_variable(:obj:'function'): the function to define the external variable
-    Returns:
-        side effect: the rates and variables are updated
-        rates(:obj:'list'): the list of rates
+def _update_rates(module, voi, states, rates, variables, external_variable=None):
+    """ Update the rates of the module.
+    Parameters
+    ----------
+    module : object
+        The module to update.
+    voi : float
+        The current value of the independent variable.
+    states : list
+        The current state of the system.
+    rates : list
+        The current rates of change of the system.
+    variables : list
+        The current variables of the system.
+    external_variable : object, optional
+        The function to specify external variable.
+
+    Returns
+    -------
+    list
+        The updated rates of change of the system.
     """
     if external_variable:
        module.compute_rates(voi, states, rates, variables,external_variable)
@@ -117,20 +251,31 @@ def _update_rates(voi, states, rates, variables, module, external_variable=None)
         module.compute_rates(voi, states, rates, variables)
     return rates    
 
-def _update_variables(voi, states, rates, variables, module, external_variable=None):
-    """ Update the module.
-    Args:
-        voi(:obj:'float'): the variable of integration
-        states(:obj:'list'): the list of states
-        rates(:obj:'list'): the list of rates
-        variables(:obj:'list'): the list of variables
-        module(:obj:'module'): the module imported from the generated Python code
-        external_variable(:obj:'function'): the function to define the external variable
-    Returns:
-        side effect: the variables are updated
+def _update_variables(module, voi, states, rates, variables, external_variable=None):
+    """ Update the variables of the module.
+    
+    Parameters
+    ----------
+    module : object
+        The module to update.
+    voi : float
+        The current value of the independent variable.
+    states : list
+        The current state of the system.
+    rates : list
+        The current rates of change of the system.
+    variables : list
+        The current variables of the system.
+    external_variable : object, optional
+        The function to specify external variable.
+
+    Side effects
+    ------------
+    The variables of the module are updated.
+    
     """
     if external_variable:
-       if states is None and rates is None:
+       if states is None and rates is None: # algebraic
            module.compute_variables(variables,external_variable)
        else:
            module.compute_variables(voi, states, rates, variables,external_variable)
@@ -140,97 +285,145 @@ def _update_variables(voi, states, rates, variables, module, external_variable=N
         else:
             module.compute_variables(voi, states, rates, variables)
 
-def _append_current_results(index, voi, states, variables, observables,sed_results):
+def _append_current_results(sed_results, index, observables, voi, states, variables):
     """ Append the current results to the results.
-    Args:
-        index(:obj:'int'): the index of the current result
-        voi(:obj:'float'): the variable of integration
-        states(:obj:'list'): the list of states
-        variables(:obj:'list'): the list of variables
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
-        sed_results(:obj:'dict'): the dictionary of array of results, the format is {id:numpy.ndarray}
-    Returns:
-        side effect: the current results are appended to the results
+    
+    Parameters
+    ----------
+    sed_results : dict
+        The dictionary of the simulation results.
+    index : int
+        The current index of the results.
+    observables : dict
+        The dictionary of the observables.
+    voi : float
+        The current value of the independent variable.
+    states : list
+        The current state of the system.
+    variables : list
+        The current variables of the system.
+
+    Side effects
+    ------------
+    The current results are appended to the results.    
     """
+
     for id, v in observables.items():
         if v['type'] == 'variable_of_integration':
-            #print("voi = {}".format(voi))
             sed_results[id][index] = voi
         elif v['type'] == 'state':
             sed_results[id][index] = states[v['index']]
         else:
             sed_results[id][index] = variables[v['index']]
 
-def solve_euler(module, external_update, observables, current_state, output_start_time,output_end_time,number_of_steps,step_size=None):
+def solve_euler(module, current_state, observables, output_start_time, output_end_time, number_of_steps, step_size=None, external_variable=None):
     """ Euler method solver.	
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_update(:obj:'function'): the function to update the external variables
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
-        current_state(:obj:'tuple'): the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
-        step_size(:obj:'float'): the step size of the integration
-    Returns:
-        :obj:`tuple`: the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
+    
+    Parameters
+    ----------
+    module : object
+        The module to solve.
+    current_state : tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
+    observables : dict
+        The dictionary of the observables.
+    output_start_time : float
+        The start time of the output.
+    output_end_time : float
+        The end time of the output.
+    number_of_steps : int
+        The number of steps.
+    step_size : float, optional
+        The step size. Default is None.
+        When step_size is None, the step size is calculated based on the 
+        output_start_time, output_end_time, and number_of_steps.
+    external_variable : object, optional
+        The function to specify external variable. Default is None.
+
+    Returns
+    -------
+    tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
     """	
+
     output_step_size = (output_end_time - output_start_time) / number_of_steps
     if step_size is None:
         step_size = output_step_size
         
     voi, states, rates, variables, current_index, sed_results = current_state
-
+    # integrate to the output start point
     n=abs((output_start_time-voi)/step_size)
     for i in range(int(n)):
-        rates=_update_rates(voi, states,  rates, variables, module, external_update)
+        rates=_update_rates(module, voi, states,  rates, variables, external_variable)
         delta = list(map(lambda var: var * step_size, rates))
         states = [sum(x) for x in zip(states, delta)]
         voi += step_size
     
-    _update_variables(voi, states, rates, variables, module, external_update)
+    _update_variables(module, voi, states, rates, variables, external_variable)
     # save observables
-    _append_current_results(current_index, voi, states, variables,  observables, sed_results)
+    _append_current_results(sed_results, current_index, observables, voi, states, variables)
     
+    # integrate to the output end point
     if output_step_size > step_size:
         n = output_step_size/step_size
     else:
         n=1
-
     for i in range(int(number_of_steps)):
         for j in range(int(n)):
-            rates=_update_rates(voi, states,  rates, variables, module, external_update)
+            rates=_update_rates(module, voi, states,  rates, variables, external_variable)
             delta = list(map(lambda var: var * step_size, rates))
             states = [sum(x) for x in zip(states, delta)]
             voi += step_size
         
-        _update_variables(voi, states, rates, variables, module, external_update)
+        _update_variables(module, voi, states, rates, variables, external_variable)
         # save observables
         current_index = current_index+1
-        _append_current_results(current_index, voi, states, variables,  observables, sed_results)
+        _append_current_results(sed_results, current_index, observables, voi, states, variables)
 
     current_state = (voi, states, rates, variables, current_index, sed_results)
 
     return current_state
 
-def solve_scipy(module, external_update, observables, current_state, output_start_time,output_end_time,number_of_steps,method,integrator_parameters):
+def solve_scipy(module, current_state, observables, output_start_time, output_end_time, number_of_steps, method, integrator_parameters, external_variable=None):
     """ Scipy supported solvers.
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_update(:obj:'function'): the function to update the external variables
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
-        current_state(:obj:'tuple'): the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
-        integrator_parameters(:obj:'dict'): the dictionary of the parameters of the integrator
-    Returns:
-        :obj:`tuple`: the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
-    """
-    voi, states, rates, variables, current_index, sed_results = current_state
 
+    Parameters
+    ----------
+    module : object
+        The module to solve.
+    current_state : tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
+    observables : dict
+        The dictionary of the observables.
+    output_start_time : float
+        The start time of the output.
+    output_end_time : float
+        The end time of the output.
+    number_of_steps : int
+        The number of steps.
+    method : str
+        The name of the integrator.
+    integrator_parameters : dict
+        The parameters of the integrator.
+    external_variable : object, optional
+        The function to specify external variable. Default is None.
+
+    Returns
+    -------
+    tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).    
+    """
+
+    voi, states, rates, variables, current_index, sed_results = current_state
     output_step_size = (output_end_time - output_start_time) / number_of_steps
     # Set the initial conditions and parameters
     solver = ode(_update_rates)
     solver.set_initial_value(states, voi)
-    solver.set_f_params(rates, variables, module, external_update)
+    solver.set_f_params(rates, variables, module, external_variable)
     solver.set_integrator(method, **integrator_parameters)
     
     # integrate to the output start point
@@ -240,47 +433,55 @@ def solve_scipy(module, external_update, observables, current_state, output_star
         if not solver.successful():
             raise ValueError('scipy.integrate.ode failed.') 
                
-    _update_variables( solver.t, solver.y, rates, variables, module, external_update)
+    _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
     # save observables
-    _append_current_results(current_index, solver.t, solver.y, variables, observables, sed_results)
-
+    _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
+    # integrate to the output end point
     for i in range(number_of_steps):
        solver.integrate(solver.t + output_step_size)
        if not solver.successful():
            raise ValueError('scipy.integrate.ode failed.')
-       _update_variables( solver.t, solver.y, rates, variables, module, external_update)
+       _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
        # save observables
        current_index = current_index + 1
-       _append_current_results(current_index, solver.t, solver.y, variables, observables, sed_results)
+       _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
     
     current_state = (solver.t, solver.y, rates, variables, current_index, sed_results)
     return current_state
 
-
-def algebra_evaluation(module, external_update, observables,current_state, number_of_steps):
+def algebra_evaluation(module, current_state, observables, number_of_steps, external_variable=None):
     """ Algebraic evaluation.
-    Args:
-        module(:obj:'module'): the module imported from the generated Python code
-        external_update(:obj:'function'): the function to update the external variables
-        observables(:obj:'dict'): the dictionary of observables, the format is 
-                                  {id:{'name':'variable name','component':'component name','vtype':'state','index':index}}
-        current_state(:obj:'tuple'): the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
-        number_of_steps(:obj:'int'): the number of steps
-    Returns:
-        :obj:`tuple`: the tuple of the current state, the format is (voi, states, rates, variables, current_index, sed_results)
+    
+    Parameters
+    ----------
+    module : object
+        The module to solve.
+    current_state : tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
+    observables : dict
+        The dictionary of the observables.
+    number_of_steps : int
+        The number of steps.
+    external_variable : object, optional
+        The function to specify external variable. Default is None.
+
+    Returns
+    -------
+    tuple
+        The current state of the module.
+        The format is (voi, states, rates, variables, current_index, sed_results).
     """
 
     voi, states, rates, variables, current_index, sed_results = current_state
 
-    _update_variables( 0, None, None, variables, module, external_update)
-    _append_current_results(current_index, 0, None, variables, observables, sed_results)
+    _update_variables(module, 0, None, None, variables, external_variable)
+    _append_current_results(sed_results, current_index, observables, 0, None, variables)
 
     for i in range(number_of_steps):
         current_index = current_index + 1
-        _append_current_results(current_index, 0, None, variables, observables, sed_results)
+        _append_current_results(sed_results, current_index, observables, 0, None, variables)
 
     current_state = (voi, states, rates, variables, current_index, sed_results)
    
     return current_state
-
-

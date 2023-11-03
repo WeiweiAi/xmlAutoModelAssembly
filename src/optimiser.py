@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize, Bounds, LinearConstraint
-from .simulator import simulate, External_module,get_observables
+from .simulator import  External_module,get_observables
 
 # https://docs.scipy.org/doc/scipy/reference/optimize.html
 SCIPY_OPTIMIZE_LOCAL = ['Nelder-Mead','Powell','CG','BFGS','Newton-CG','L-BFGS-B','TNC','COBYLA','SLSQP','trust-constr','dogleg','trust-ncg','trust-exact','trust-krylov']

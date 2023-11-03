@@ -98,8 +98,8 @@ def _setDimensionDescription(sed_dimDescription, dimDict):
         atomic_Desc=dim2_Description.createAtomicDescription()
         if not operation_flag_check(atomic_Desc.setValueType(dimDict['dim2']['valueType']), 'Set the valueType attribute of a dimension description'):
             return False
-        if not operation_flag_check(dim2_Description.setAtomicName(dimDict['dim2']['atomicName']), 'Set the atomicName attribute of a dimension description'):
-            return False
+      #  if not operation_flag_check(dim2_Description.setAtomicName(dimDict['dim2']['atomicName']), 'Set the atomicName attribute of a dimension description'):
+      #      return False
     sed_dimDescription.append(dim1_Description)
     return True 
 
@@ -114,17 +114,17 @@ def _get_dict_dimDescription(sed_dimDescription):
                        }
     """
     dict_dimDescription = {}
-    dict_dimDescription['id'] = sed_dimDescription.getId()
-    dict_dimDescription['name'] = sed_dimDescription.getName()
-    dict_dimDescription['indexType'] = sed_dimDescription.getIndexType()
-    if sed_dimDescription.isSetCompositeDescription():
-        dict_dimDescription['dim2'] = {}
-        dim2_Description = sed_dimDescription.getCompositeDescription(0)
-        dict_dimDescription['dim2']['id'] = dim2_Description.getId()
-        dict_dimDescription['dim2']['name'] = dim2_Description.getName()
-        dict_dimDescription['dim2']['indexType'] = dim2_Description.getIndexType()
-        dict_dimDescription['dim2']['valueType'] = dim2_Description.getAtomicDescription(0).getValueType()
-        dict_dimDescription['dim2']['atomicName'] = dim2_Description.getAtomicDescription(0).getAtomicName()
+    dim1_Description = sed_dimDescription.get(0)
+    dict_dimDescription['id'] = dim1_Description.getId()
+    dict_dimDescription['name'] = dim1_Description.getName()
+    dict_dimDescription['indexType'] = dim1_Description.getIndexType()
+    dict_dimDescription['dim2'] = {}
+    dim2_Description = dim1_Description.getCompositeDescription(0)
+    dict_dimDescription['dim2']['id'] = dim2_Description.getId()
+    dict_dimDescription['dim2']['name'] = dim2_Description.getName()
+    dict_dimDescription['dim2']['indexType'] = dim2_Description.getIndexType()
+    dict_dimDescription['dim2']['valueType'] = dim2_Description.get(0).getValueType()
+    dict_dimDescription['dim2']['atomicName'] = dim2_Description.get(0).getName()
     return dict_dimDescription
 
 def _setSlice(sed_slice, reference,value=None,index=None,startIndex=None,endIndex=None):
