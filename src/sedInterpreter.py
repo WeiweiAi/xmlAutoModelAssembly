@@ -11,9 +11,10 @@ import libsedml
 from .math4sedml import compile_math,eval_math,AGGREGATE_MATH_FUNCTIONS
 from lxml import etree
 from .report import pad_arrays_to_consistent_shapes, writeReport
-from.analyser import analyse_model_full,parse_model
+from.solver import load_module
+from.analyser import analyse_model_full,parse_model,External_module,get_observables,get_variable_indices, get_mtype
 from.coder import writePythonCode
-from.simulator import load_module,External_module,sim_UniformTimeCourse,getSimSettingFromDict,get_observables,get_mtype,sim_TimeCourse,SimulationSettings,get_KISAO_parameters
+from.simulator import sim_UniformTimeCourse,getSimSettingFromDict,sim_TimeCourse,SimSettings,get_KISAO_parameters
 from .optimiser import get_KISAO_parameters_opt
 from .sedEditor import get_dict_simulation, get_dict_algorithm
 from scipy.optimize import minimize, Bounds
@@ -69,7 +70,11 @@ def exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=No
         
         # execute task
         if task.isSedTask ():
-            task_var_results=exec_task(doc,task, original_model,model_etree, model_base_dir,external_variables_info,external_variables_values)[-1]            
+            try:
+                current_state, task_var_results=exec_task(doc,task, original_model,model_etree, model_base_dir,external_variables_info,external_variables_values)
+            except Exception as exception:
+                print(exception)
+                raise RuntimeError(exception)           
 
         elif task.isSedRepeatedTask ():
             task_var_results = exec_repeated_task(doc,task,model_base_dir,external_variables_info,external_variables_values, model_etrees=model_etrees)
@@ -130,44 +135,44 @@ def exec_task(doc,task, original_model,model_etree, model_base_dir,external_vari
     cellml_model,issues=parse_model(original_model.getSource(), True)
     if not cellml_model:
         print('Model parsing failed!',issues)
-        return None
+        raise RuntimeError('Model parsing failed!')
     # analyse the model
     analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
     if not analyser:
         print('Model analysis failed!',issues)
-        return None
+        raise RuntimeError('Model analysis failed!')
     else:
         mtype=get_mtype(analyser)
         if mtype not in ['ode','algebraic']:
             print('Model type is not supported!')
-            return None
+            raise RuntimeError('Model type is not supported!')
                 
     task_vars = get_variables_for_task(doc, task)
     if len(task_vars) == 0:
         print('Task does not record any variables.')
-        return None
+        raise RuntimeError('Task does not record any variables.')
     # get observables
     try:
         variables_info = get_variable_info_CellML(task_vars,model_etree)
     except ValueError as exception:
         print(exception)
-        return None
+        raise RuntimeError(exception)
     
     observables=get_observables(analyser,cellml_model,variables_info)
     if not observables:
         print('Not all observables found in the Python module!')
-        return None
+        raise RuntimeError('Not all observables found in the Python module!')
     # get simulation settings
     sedSimulation=doc.getSimulation(task.getSimulationReference())
     dict_simulation=get_dict_simulation(sedSimulation)
     if not dict_simulation:
         print('Simulation settings are not found!')
-        return None
+        raise RuntimeError('Simulation settings are not found!')
     
     sim_setting=getSimSettingFromDict(dict_simulation)
     if not sim_setting:
         print('Simulation settings are not supported!')
-        return None
+        raise RuntimeError('Simulation settings are not supported!')
     
     # write Python code
     full_path = model_base_dir+'/'+original_model.getId()+'.py'
@@ -176,15 +181,28 @@ def exec_task(doc,task, original_model,model_etree, model_base_dir,external_vari
         module=load_module(full_path)
     except Exception as exception:
         print(exception)
-        return None
+        raise RuntimeError(exception)
     # specify external variables
-    external_module=External_module(analyser, cellml_model, external_variables_info,external_variables_values)
+    try:
+        param_indices=get_variable_indices(analyser, cellml_model,external_variables_info)
+    except ValueError as exception:
+        print(exception)
+        raise RuntimeError(exception)
+    external_module=External_module(param_indices,external_variables_values)
     # execute simulation    
     if dict_simulation['type']=='UniformTimeCourse':
         if current_state:
-            task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state)[-1]
+            try:
+                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state)[-1]
+            except Exception as exception:
+                print(exception)
+                raise RuntimeError(exception)
         else:
-            task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module)[-1]
+            try:
+                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module)[-1]
+            except Exception as exception:
+                print(exception)
+                raise RuntimeError(exception)
     # check that the expected variables were recorded
     variable_results = {}
     if len(task_variable_results) > 0:

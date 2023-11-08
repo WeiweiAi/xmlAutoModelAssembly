@@ -40,13 +40,14 @@ def writeReport(report, results, base_path, rel_path, format='csv'):
         msg = 'Reports exported to {} do not contain information about the data type or size of each data set.'.format(
             format.upper())
         print(msg)
-        results_df = pandas.DataFrame(results_array, index=data_set_labels)
+        #results_df = pandas.DataFrame(results_array, index=data_set_labels)
+        results_df = pandas.DataFrame(numpy.transpose(results_array), columns=data_set_labels)
         if format in ['csv','tsv']:
             filename = os.path.join(base_path, rel_path + '.' + format)
             out_dir = os.path.dirname(filename)
             if not os.path.isdir(out_dir):
                 os.makedirs(out_dir)
-            results_df.to_csv(filename, header=False, sep=',' if format == 'csv' else '\t')
+            results_df.to_csv(filename, header=True, sep=',' if format == 'csv' else '\t')
         else:
             filename = os.path.join(base_path, os.path.dirname(rel_path) + '.' + format)
             out_dir = os.path.dirname(filename)

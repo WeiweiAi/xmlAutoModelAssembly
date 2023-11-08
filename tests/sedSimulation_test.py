@@ -20,4 +20,4 @@ working_dir='./csv'
 model_base_dir='./csv'
 base_out_path='./csv'
 
-exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=None, external_variables_info=[],external_variables_values=[], indent=0)
+exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=None, external_variables_info={},external_variables_values=[], indent=0)

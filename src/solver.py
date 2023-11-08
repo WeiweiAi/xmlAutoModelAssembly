@@ -71,7 +71,7 @@ def create_sed_results(observables, N):
         sed_results.update({id: np.empty(N+1)})
     return sed_results
 
-def _initialize_module_ode(module, voi=0, external_variable=None, parameters={}):
+def _initialize_module_ode(module, external_variable=None, parameters={}):
     """
     Initialize the module with ODEs.
 
@@ -79,8 +79,6 @@ def _initialize_module_ode(module, voi=0, external_variable=None, parameters={})
     ----------
     module : object
         The module to be initialized.
-    voi : float, optional
-        The initial value of the independent variable. Default is 0.
     external_variable : object, optional
         The function to specify external variable.
     parameters : dict, optional
@@ -109,9 +107,9 @@ def _initialize_module_ode(module, voi=0, external_variable=None, parameters={})
     variables = module.create_variables_array()
 
     if external_variable:
-        module.initialise_variables(voi,states, rates, variables,external_variable)
+        module.initialise_variables(states, rates, variables,external_variable)
     else:    
-       module.initialise_variables(voi,states, rates, variables)
+       module.initialise_variables(states, rates, variables)
     
     for id, v in parameters.items():
         if v['type'] == 'state':
@@ -207,7 +205,7 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
 
     if mtype=='ode':
         try:
-            states, rates, variables=_initialize_module_ode(module,voi,external_variable,parameters)
+            states, rates, variables=_initialize_module_ode(module,external_variable,parameters)
         except ValueError as e:
             raise ValueError(e)         
         current_state = (voi, states, rates, variables, 0,sed_results)
@@ -411,6 +409,11 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     external_variable : object, optional
         The function to specify external variable. Default is None.
 
+    Raises
+    ------
+    RuntimeError
+        If the scipy.integrate.ode failed, a RuntimeError will be raised.
+
     Returns
     -------
     tuple
@@ -431,7 +434,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     for i in range(int(n)):
         solver.integrate(solver.t + output_step_size)
         if not solver.successful():
-            raise ValueError('scipy.integrate.ode failed.') 
+            raise RuntimeError('scipy.integrate.ode failed.') 
                
     _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
     # save observables
@@ -440,7 +443,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     for i in range(number_of_steps):
        solver.integrate(solver.t + output_step_size)
        if not solver.successful():
-           raise ValueError('scipy.integrate.ode failed.')
+           raise RuntimeError('scipy.integrate.ode failed.')
        _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
        # save observables
        current_index = current_index + 1

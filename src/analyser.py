@@ -207,7 +207,7 @@ def analyse_model(flatModel,external_variables_dic={}):
     else:
         return None, issues
     
-def analyse_model_full(model,base_dir,external_variables_info=[],strict_mode=True):
+def analyse_model_full(model,base_dir,external_variables_info={},strict_mode=True):
     """ 
     Fully validate and analyse a cellml model.
    
