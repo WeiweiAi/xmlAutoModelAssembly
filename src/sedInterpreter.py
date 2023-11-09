@@ -11,8 +11,8 @@ import libsedml
 from .math4sedml import compile_math,eval_math,AGGREGATE_MATH_FUNCTIONS
 from lxml import etree
 from .report import pad_arrays_to_consistent_shapes, writeReport
-from.solver import load_module
-from.analyser import analyse_model_full,parse_model,External_module,get_observables,get_variable_indices, get_mtype
+from.solver import load_module,get_observables,get_externals
+from.analyser import analyse_model_full,parse_model, get_mtype
 from.coder import writePythonCode
 from.simulator import sim_UniformTimeCourse,getSimSettingFromDict,sim_TimeCourse,SimSettings,get_KISAO_parameters
 from .optimiser import get_KISAO_parameters_opt
@@ -184,22 +184,21 @@ def exec_task(doc,task, original_model,model_etree, model_base_dir,external_vari
         raise RuntimeError(exception)
     # specify external variables
     try:
-        param_indices=get_variable_indices(analyser, cellml_model,external_variables_info)
+        external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
     except ValueError as exception:
         print(exception)
         raise RuntimeError(exception)
-    external_module=External_module(param_indices,external_variables_values)
     # execute simulation    
     if dict_simulation['type']=='UniformTimeCourse':
         if current_state:
             try:
-                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state)[-1]
+                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable,current_state)[-1]
             except Exception as exception:
                 print(exception)
                 raise RuntimeError(exception)
         else:
             try:
-                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module)[-1]
+                task_variable_results=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable)[-1]
             except Exception as exception:
                 print(exception)
                 raise RuntimeError(exception)
@@ -227,7 +226,7 @@ def get_variable_info_CellML(task_variables,model_etree):
         else:
             variable_element = model_etree.xpath(v.getTarget (),namespaces={"cellml":"http://www.cellml.org/cellml/2.0#"})[0]
         if variable_element is False:
-            raise ValueError('The variable {} is not found!'.format(v.getTarget () ))
+            raise ValueError('The variable {} is not found!'.format(v.getTarget ()))
         else:
             variable_info[v.getId()] = {
                 'name': variable_element.attrib['name'],
@@ -462,11 +461,15 @@ def exec_parameterEstimationTask( doc,task, original_model,model_etree, working_
 def objective_function(param_vals, analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments):
     residuals_sum=0
     a=external_variables_values+param_vals.tolist()
-    external_module=External_module(analyser, cellml_model, external_variables_info,a)
+    try:
+        external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
+    except ValueError as exception:
+        print(exception)
+        raise RuntimeError(exception)
 
     for i in range(len(experimentReferences)):
         for experimentReference in experimentReferences[i]:
-            sim_setting=SimulationSettings()
+            sim_setting=SimSettings()
             simulation_type=fitExperiments[experimentReference]['type']
             sim_setting.tspan=fitExperiments[experimentReference]['tspan']
             dict_algorithm=fitExperiments[experimentReference]['algorithm']
@@ -478,7 +481,7 @@ def objective_function(param_vals, analyser, cellml_model, mtype, module, extern
             observables_exp=fitness_info[2]
         
         if simulation_type=='timeCourse':
-            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
             sed_results = current_state[-1]
             residuals={}
             for key, value in sed_results.items():

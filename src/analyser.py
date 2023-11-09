@@ -1,6 +1,30 @@
-from libcellml import  Parser, Validator, Analyser, AnalyserExternalVariable, Importer, cellmlElementTypeAsString, AnalyserModel, AnalyserVariable
+from libcellml import  Parser, Validator, Analyser, AnalyserExternalVariable, Importer, cellmlElementTypeAsString, AnalyserModel
 import json
 import os
+
+"""
+========
+analyser
+========
+This module provides functions to parse, validate, resolve imports and analyse a CellML model.
+It also provides functions to get the type of the model.
+
+Functions
+---------
+* parse_model(filename, strict_mode=False)
+    Parse a CellML file to a CellML model.
+* validate_model(model)
+    Validate a CellML model.
+* resolve_imports(model, base_dir,strict_mode=True)
+    Resolve the imports of a CellML model.
+* analyse_model(flatModel,external_variables_dic={})
+    Analyse a flattened CellML model.
+* analyse_model_full(model,base_dir,external_variables_info={},strict_mode=True)
+    Fully validate and analyse a cellml model.
+* get_mtype(analyser)
+    Get the type of the model.
+
+"""
 
 def _dump_issues(source_method_name, logger):
     """"
@@ -17,6 +41,8 @@ def _dump_issues(source_method_name, logger):
     -------
     str
         The issues found by the logger.
+        The format is for html display.
+        When no issues are found, the string is empty.
     """
 
     issues = ''
@@ -41,10 +67,16 @@ def parse_model(filename, strict_mode=False):
     strict_mode: bool, optional
         Whether to use strict mode to parse the CellML file. Default: False.
         If False, the parser can parse CellML 1.0 and 1.1 files. TODO: check this
+    
+    Raises
+    ------
+    FileNotFoundError
+        If the CellML file does not exist.
 
     Returns
     -------
     tuple
+        (Model, str)
         The CellML model and the issues found by the parser.
         If issues are found, the model is None.
     """
@@ -52,10 +84,9 @@ def parse_model(filename, strict_mode=False):
     if not os.path.isfile(filename):
         raise FileNotFoundError('Model source file `{}` does not exist.'.format(filename))
     
-    cellml_file = open(filename)
     parser = Parser(strict_mode)
-    model = parser.parseModel(cellml_file.read())
-    cellml_file.close() 
+    with open(filename, 'r') as f:
+        model = parser.parseModel(f.read())
     issues = _dump_issues("parse_model", parser)
     if issues !='':
         return None, issues
@@ -118,62 +149,6 @@ def resolve_imports(model, base_dir,strict_mode=True):
     else:
         return None, issues
 
-def flatten_model(model,importer):
-    """ 
-    Flatten a CellML model. Assume the model has been validated and the imports have been resolved.
-    
-    Parameters
-    ----------
-    model: Model
-        The CellML model to be flattened.
-    importer: Importer
-        The Importer instance that has resolved the imports of the model.
-    
-    Returns
-    -------
-    Model
-        If successful,the flattened CellML model, otherwise None.
-    """
-    
-    flatModel=importer.flattenModel(model)
-    return flatModel
-
-def ext_var_dic(flatModel,external_variables_info):
-    """
-    Create a dictionary of external variables in the flattened model.
-    
-    Parameters
-    ----------
-    flatModel: Model
-        The flattened CellML model.
-    external_variables_info: dict
-        The external variables to be specified, in the format of {id:{'component': , 'name': }}
-
-    Raises
-    ------
-    ValueError
-        If an external variable is not found in the flattened model.
-
-    Returns
-    -------
-    dict
-        The dictionary of external variables in the flattened model, in the format of {external_variable:[]}
-    
-    Notes
-    -----
-        No dependency is specified for the external variables.
-    """
-
-    external_variables_dic={}
-    for _, ext_var_info in external_variables_info.items():
-        flat_ext_var=flatModel.component(ext_var_info['component']).variable(ext_var_info['name']) # TODO: check if equivalent variables should be considered
-        if flat_ext_var:
-           external_variables_dic[flat_ext_var]=[]
-        else:
-            raise ValueError ("The external variable {} in component {} is not found in the flattened model!".format(ext_var_info['component'],ext_var_info['name']))
-
-    return external_variables_dic
-
 def analyse_model(flatModel,external_variables_dic={}):
     """ 
     Analyse a flattened CellML model.
@@ -183,7 +158,8 @@ def analyse_model(flatModel,external_variables_dic={}):
     flatModel: Model
         The flattened CellML model.
     external_variables_dic: dict, optional
-        The dictionary of external variables in the flattened model, in the format of {external_variable:[dependency1,dependency2]}.
+        The dictionary of external variables in the flattened model,
+        in the format of {external_variable:[dependency1,dependency2]}.
 
     Returns
     -------
@@ -237,7 +213,7 @@ def analyse_model_full(model,base_dir,external_variables_info={},strict_mode=Tru
             if not flatModel:
                 return None, json.dumps(issues_import)
             try:
-                external_variables_dic=ext_var_dic(flatModel,external_variables_info)
+                external_variables_dic=_ext_var_dic(flatModel,external_variables_info)
             except ValueError as err:
                 return None, json.dumps(str(err))            
             analyser,issues_analyse=analyse_model(flatModel,external_variables_dic)
@@ -268,264 +244,40 @@ def get_mtype(analyser):
   
     """
     return AnalyserModel.typeAsString(analyser.model().type())
-class External_module:
-    """ Class to define the external module.
-
-    Attributes
-    ----------
-    param_indices: list
-        The indices of the variable in the generated python module.
-    param_vals: list
-        The values of the variables given by the external module .
-
-    Methods
-    -------
-    external_variable_algebraic(variables,index)
-        Define the external variable function for algebraic type model.
-    external_variable_ode(voi, states, rates, variables,index)
-        Define the external variable function for ode type model.  
     
-    Notes
-    -----
-    This class only allows the model to take inputs, 
-    while the inputs do not depend on the model variables.
-        
+def _ext_var_dic(flatModel,external_variables_info):
     """
-    def __init__(self, param_indices, param_vals):
-        """
-
-         Parameters
-         ----------
-         param_indices: list
-             The indices of the variable in the generated python module.
-         param_vals: list
-             The values of the variables given by the external module .
-             
-        """
-        self.param_vals = param_vals
-        self.param_indices = param_indices 
-
-    def external_variable_algebraic(self, variables,index):
-        return self.param_vals[self.param_indices.index(index)]
-
-    def external_variable_ode(self,voi, states, rates, variables,index):
-        return self.param_vals[self.param_indices.index(index)]
-          
-def get_externals(mtype,external_module):
-    """ Get the external variable function for the model.
-
-    Parameters
-    ----------
-    mtype: str
-        The type of the model.
-    external_module: External_module
-        The external module instance.
-    
-    Returns
-    -------
-    function
-        The external variable function for the model.
-    """
-
-    if mtype=='algebraic':
-        external_variable=external_module.external_variable_algebraic
-    elif mtype=='ode':
-        external_variable=external_module.external_variable_ode
-    else:
-        raise NotImplementedError("The model type {} is not supported!".format(mtype))
-
-    return external_variable
-
-def _get_index_type_for_variable(analyser, variable):
-    """Get the index and type of a variable in a module.
+    Create a dictionary of external variables in the flattened model.
     
     Parameters
     ----------
-    analyser: Analyser
-        The Analyser instance of the CellML model.
-    variable: Variable
-        The CellML variable.
-
-    Returns
-    -------
-    tuple
-        (int, str)
-        The index and type of the variable.
-        If the variable is not found, the index is -1 and the type is 'unknown'.
-        The type can be 'algebraic', 'constant', 'computed_constant', 'external',  'state' or 'variable_of_integration'.
-    
-    """
-    analysedModel=analyser.model()
-    for i in range(analysedModel.variableCount()):
-        avar=analysedModel.variable(i)
-        var=avar.variable()
-        var_name=var.name()
-        component_name=var.parent().name()
-        if component_name==variable.parent().name() and var_name==variable.name():
-            return avar.index(), AnalyserVariable.typeAsString(avar.type())
-    for i in range(analysedModel.stateCount()):
-        avar=analysedModel.state(i)
-        var=avar.variable()
-        var_name=var.name()
-        component_name=var.parent().name()
-        if component_name==variable.parent().name() and var_name==variable.name():
-            return avar.index(), AnalyserVariable.typeAsString(avar.type())
-    avar=analysedModel.voi()
-    if avar:
-        var=avar.variable()
-        var_name=var.name()
-        component_name=var.parent().name()
-        if component_name==variable.parent().name() and var_name==variable.name():
-            return avar.index(), AnalyserVariable.typeAsString(avar.type())    
-    return -1, 'unknown'
-
-def get_index_type_for_equivalent_variable(analyser, variable):
-    """Get the index and type of a variable in a module by searching through equivalent variables.
-    
-    Parameters
-    ----------
-    analyser: Analyser
-        The Analyser instance of the CellML model.
-    variable: Variable
-        The CellML variable.
-
-    Returns
-    -------
-    tuple
-        (int, str)
-        The index and type of the variable.
-        If the variable is not found, the index is -1 and the type is 'unknown'.        
-    """
-
-    index, vtype = _get_index_type_for_variable(analyser,variable)
-    if vtype != 'unknown':
-        return index, vtype
-    else:
-        for i in range(variable.equivalentVariableCount()):
-            eqv = variable.equivalentVariable(i)
-            index, vtype = _get_index_type_for_variable(analyser, eqv)
-            if vtype != 'unknown':
-                return index, vtype
-    return -1, 'unknown'
-
-def get_variable_indices(analyser, model,variables_info):
-    """Get the indices of a list of variables in a model.
-    
-    Parameters
-    ----------
-    analyser: Analyser
-        The Analyser instance of the CellML model.
-    model: Model
-        The CellML model.
-    variables_info: dict
-        The variables information in the format of {id:{'component': , 'name': }}.
+    flatModel: Model
+        The flattened CellML model.
+    external_variables_info: dict
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}
 
     Raises
     ------
     ValueError
-        If a variable is not found in the model.
-
-    Returns
-    -------
-    list
-        The indices of the variables in the generated python module.
-
-    Notes
-    -----
-    The indices should be in the same order as the variables in the dictionary.
-    Hence, Python 3.6+ is required.
-    """
-    try:
-        observables=get_observables(analyser, model, variables_info)
-    except ValueError as err:
-        print(str(err))
-        raise ValueError(str(err))
-    indices=[]
-    for key,observable in observables.items():
-        indices.append(observable['index'])
-
-    return indices
-
-def get_observables(analyser, model, variables_info):
-    """
-    Get the observables of the simulation.
-    
-    Parameters
-    ----------
-    analyser: Analyser
-        The Analyser instance of the CellML model.
-    model: Model
-        The CellML model.
-    variables_info: dict
-        The variables to be observed, 
-        in the format of {id:{'component': , 'name': }}.
-
-    Raises
-    ------
-    ValueError
-        If a variable is not found in the model.
+        If an external variable is not found in the flattened model.
 
     Returns
     -------
     dict
-        The observables of the simulation, 
-        in the format of {id:{'name': , 'component': , 'index': , 'type': }}.
+        The dictionary of external variables in the flattened model, in the format of {external_variable:[]}
+    
+    Notes
+    -----
+        No dependency is specified for the external variables.
     """
-    observables = {}
-    for key,variable_info in variables_info.items():
-        try:
-            variable=_find_variable(model, variable_info['component'],variable_info['name'])
-        except ValueError as err:
-            print(str(err))
-            raise ValueError(str(err))
-        
-        index, vtype=get_index_type_for_equivalent_variable(analyser,variable)
-        if vtype != 'unknown':
-            observables[key]={'name':variable_info['name'],'component':variable_info['component'],'index':index,'type':vtype}
+
+    external_variables_dic={}
+    for _, ext_var_info in external_variables_info.items():
+        flat_ext_var=flatModel.component(ext_var_info['component']).variable(ext_var_info['name']) # TODO: check if equivalent variables should be considered
+        if flat_ext_var:
+           external_variables_dic[flat_ext_var]=[]
         else:
-            print("Unable to find a required variable in the generated code")
-            raise ValueError("Unable to find a required variable in the generated code")
-        
-    return observables
+            raise ValueError ("The external variable {} in component {} is not found in the flattened model!"
+                              .format(ext_var_info['component'],ext_var_info['name']))
 
-def _find_variable(model, component_name, variable_name):
-    """ Find a variable in a CellML model based on component name and variable name.
-    
-    Parameters
-    ----------
-    model: Model
-        The CellML model.
-    component_name: str
-        The name of the component.
-    variable_name: str
-        The name of the variable.
-    
-    Raises
-    ------
-    ValueError
-        If the variable is not found in the model.
-
-    Returns
-    -------
-    Variable
-        The CellML variable found in the model.
-    """
-
-    def _find_variable_component(component):
-        if component.name()==component_name:
-            for v in range(component.variableCount()):
-                if component.variable(v).name()==variable_name:
-                    return component.variable(v)            
-        if component.componentCount()>0:
-            for c in range(component.componentCount()):
-                variable=_find_variable_component(component.component(c))
-                if variable:
-                    return variable
-        return None
-    
-    for c in range(model.componentCount()):
-        variable=_find_variable_component(model.component(c))
-        if variable:
-            return variable
-        
-    raise ValueError("Unable to find the variable {} in the component {} of the model".format(variable_name,component_name))    
+    return external_variables_dic

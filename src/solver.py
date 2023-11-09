@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import PurePath
 import importlib.util
 import os
+from libcellml import AnalyserVariable
 
 """
 ======
@@ -15,6 +16,16 @@ The system can be either ODE or algebraic equations.
 The system can be solved using Euler method or scipy supported solvers.
 The code is modified from
 https://github.com/hsorby/cellsolver.git, which is licensed under Apache License 2.0.
+
+The solver module provides the following functions:
+    * load_module - load a module from a file.
+    * create_sed_results - create a dictionary to hold the simulation results for each observable.
+    * initialize_module - initialize a module based on the given model type and parameters.
+    * solve_euler - Euler method solver.
+    * solve_scipy - scipy supported solvers.
+    * algebra_evaluation - algebraic evaluation.
+    * get_externals - get the external variable function for the model.
+    * get_observables - get the observables information for the simulation.
 
 """
 
@@ -29,7 +40,8 @@ def load_module(full_path):
     Raises
     ------
     FileNotFoundError
-        If the file does not exist, a FileNotFoundError will be raised.
+        If the file does not exist.
+        If the module cannot be loaded.
 
     Returns
     -------
@@ -42,6 +54,8 @@ def load_module(full_path):
     
     module_name = PurePath(full_path).stem
     spec = importlib.util.spec_from_file_location(module_name, full_path)
+    if spec is None:
+        raise FileNotFoundError('Unable to load module `{}`.'.format(module_name))    
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -145,6 +159,7 @@ def _initialize_module_algebraic(module,external_variable=None,parameters={}):
     ValueError
         If other types of variables are specified in the parameters, 
         a ValueError will be raised.
+    
     Returns
     -------
     list
@@ -193,7 +208,8 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
     Raises
     ------
     ValueError
-        If the model type is not supported, a ValueError will be raised.
+        If the initial value of voi or external variable is specified in the parameters, 
+        a ValueError will be raised.
 
     Returns
     -------
@@ -221,12 +237,10 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
     
     return current_state
 
-def _update_rates(module, voi, states, rates, variables, external_variable=None):
+def _update_rates(voi, states, rates, variables, module, external_variable=None):
     """ Update the rates of the module.
     Parameters
     ----------
-    module : object
-        The module to update.
     voi : float
         The current value of the independent variable.
     states : list
@@ -235,6 +249,8 @@ def _update_rates(module, voi, states, rates, variables, external_variable=None)
         The current rates of change of the system.
     variables : list
         The current variables of the system.
+    module : object
+        The module to update.
     external_variable : object, optional
         The function to specify external variable.
 
@@ -249,13 +265,11 @@ def _update_rates(module, voi, states, rates, variables, external_variable=None)
         module.compute_rates(voi, states, rates, variables)
     return rates    
 
-def _update_variables(module, voi, states, rates, variables, external_variable=None):
+def _update_variables(voi, states, rates, variables, module, external_variable=None):
     """ Update the variables of the module.
     
     Parameters
     ----------
-    module : object
-        The module to update.
     voi : float
         The current value of the independent variable.
     states : list
@@ -264,6 +278,8 @@ def _update_variables(module, voi, states, rates, variables, external_variable=N
         The current rates of change of the system.
     variables : list
         The current variables of the system.
+    module : object
+        The module to update.    
     external_variable : object, optional
         The function to specify external variable.
 
@@ -314,7 +330,8 @@ def _append_current_results(sed_results, index, observables, voi, states, variab
         else:
             sed_results[id][index] = variables[v['index']]
 
-def solve_euler(module, current_state, observables, output_start_time, output_end_time, number_of_steps, step_size=None, external_variable=None):
+def solve_euler(module, current_state, observables, output_start_time, output_end_time,
+                number_of_steps, step_size=None, external_variable=None):
     """ Euler method solver.	
     
     Parameters
@@ -354,12 +371,12 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
     # integrate to the output start point
     n=abs((output_start_time-voi)/step_size)
     for i in range(int(n)):
-        rates=_update_rates(module, voi, states,  rates, variables, external_variable)
+        rates=_update_rates(voi, states,  rates, variables, module, external_variable)
         delta = list(map(lambda var: var * step_size, rates))
         states = [sum(x) for x in zip(states, delta)]
         voi += step_size
     
-    _update_variables(module, voi, states, rates, variables, external_variable)
+    _update_variables( voi, states, rates, variables, module, external_variable)
     # save observables
     _append_current_results(sed_results, current_index, observables, voi, states, variables)
     
@@ -370,12 +387,12 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
         n=1
     for i in range(int(number_of_steps)):
         for j in range(int(n)):
-            rates=_update_rates(module, voi, states,  rates, variables, external_variable)
+            rates=_update_rates( voi, states,  rates, variables, module, external_variable)
             delta = list(map(lambda var: var * step_size, rates))
             states = [sum(x) for x in zip(states, delta)]
             voi += step_size
         
-        _update_variables(module, voi, states, rates, variables, external_variable)
+        _update_variables(voi, states, rates, variables, module, external_variable)
         # save observables
         current_index = current_index+1
         _append_current_results(sed_results, current_index, observables, voi, states, variables)
@@ -384,7 +401,8 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
 
     return current_state
 
-def solve_scipy(module, current_state, observables, output_start_time, output_end_time, number_of_steps, method, integrator_parameters, external_variable=None):
+def solve_scipy(module, current_state, observables, output_start_time, output_end_time,
+                number_of_steps, method, integrator_parameters, external_variable=None):
     """ Scipy supported solvers.
 
     Parameters
@@ -436,7 +454,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
         if not solver.successful():
             raise RuntimeError('scipy.integrate.ode failed.') 
                
-    _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
+    _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
     # save observables
     _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
     # integrate to the output end point
@@ -444,7 +462,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
        solver.integrate(solver.t + output_step_size)
        if not solver.successful():
            raise RuntimeError('scipy.integrate.ode failed.')
-       _update_variables(module, solver.t, solver.y, rates, variables, external_variable)
+       _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
        # save observables
        current_index = current_index + 1
        _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
@@ -478,7 +496,7 @@ def algebra_evaluation(module, current_state, observables, number_of_steps, exte
 
     voi, states, rates, variables, current_index, sed_results = current_state
 
-    _update_variables(module, 0, None, None, variables, external_variable)
+    _update_variables(0, None, None, variables, module, external_variable)
     _append_current_results(sed_results, current_index, observables, 0, None, variables)
 
     for i in range(number_of_steps):
@@ -488,3 +506,297 @@ def algebra_evaluation(module, current_state, observables, number_of_steps, exte
     current_state = (voi, states, rates, variables, current_index, sed_results)
    
     return current_state
+
+class External_module:
+    """ Class to define the external module.
+
+    Attributes
+    ----------
+    param_indices: list
+        The indices of the variable in the generated python module.
+    param_vals: list
+        The values of the variables given by the external module .
+
+    Methods
+    -------
+    external_variable_algebraic(variables,index)
+        Define the external variable function for algebraic type model.
+    external_variable_ode(voi, states, rates, variables,index)
+        Define the external variable function for ode type model.  
+    
+    Notes
+    -----
+    This class only allows the model to take inputs, 
+    while the inputs do not depend on the model variables.
+        
+    """
+    def __init__(self, param_indices, param_vals):
+        """
+
+         Parameters
+         ----------
+         param_indices: list
+             The indices of the variable in the generated python module.
+         param_vals: list
+             The values of the variables given by the external module .
+             
+        """
+        self.param_vals = param_vals
+        self.param_indices = param_indices 
+
+    def external_variable_algebraic(self, variables,index):
+        return self.param_vals[self.param_indices.index(index)]
+
+    def external_variable_ode(self,voi, states, rates, variables,index):
+        return self.param_vals[self.param_indices.index(index)]
+          
+def get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values):
+    """ Get the external variable function for the model.
+
+    Parameters
+    ----------
+    mtype: str
+        The type of the model.
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    cellml_model: Model
+        The CellML model.
+    external_variables_info: dict
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}.
+    external_variables_values: list
+        The values of the external variables.
+    
+    Raises
+    ------
+    ValueError
+        If the number of external variables does not match the number of external variables values.
+        If the model type is not supported.
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    function
+        The external variable function for the model.
+    """
+    # specify external variables
+    try:
+        param_indices=_get_variable_indices(analyser, cellml_model,external_variables_info)
+    except ValueError as exception:
+        print(exception)
+        raise ValueError(exception)
+    
+    if len(param_indices)!=len(external_variables_values):
+        raise ValueError("The number of external variables does not match the number of external variables values!")
+
+    if len(param_indices)==0:
+        external_variable= None
+    else:
+        external_module=External_module(param_indices,external_variables_values)
+        if mtype=='algebraic':
+            external_variable=external_module.external_variable_algebraic
+        elif mtype=='ode':
+            external_variable=external_module.external_variable_ode
+        else:
+            raise ValueError("The model type {} is not supported!".format(mtype))
+       
+    return external_variable
+
+def get_observables(analyser, model, variables_info):
+    """
+    Get the observables information for the simulation
+    based on variables_info {id:{'component': , 'name': }}.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    model: Model
+        The CellML model.
+    variables_info: dict
+        The variables to be observed, 
+        in the format of {id:{'component': , 'name': }}.
+
+    Raises
+    ------
+    ValueError
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    dict
+        The observables of the simulation, 
+        in the format of {id:{'name': , 'component': , 'index': , 'type': }}.
+    """
+    observables = {}
+    for key,variable_info in variables_info.items():
+        try:
+            variable=_find_variable(model, variable_info['component'],variable_info['name'])
+        except ValueError as err:
+            print(str(err))
+            raise
+        
+        index, vtype=_get_index_type_for_equivalent_variable(analyser,variable)
+        if vtype != 'unknown':
+            observables[key]={'name':variable_info['name'],'component':variable_info['component'],'index':index,'type':vtype}
+        else:
+            print("Unable to find a required variable in the generated code")
+            raise ValueError("Unable to find a required variable in the generated code")
+        
+    return observables
+
+def _get_index_type_for_variable(analyser, variable):
+    """Get the index and type of a variable in the python module.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    variable: Variable
+        The CellML variable.
+
+    Returns
+    -------
+    tuple
+        (int, str)
+        The index and type of the variable.
+        If the variable is not found, the index is -1 and the type is 'unknown'.
+        The type can be 'algebraic', 'constant', 'computed_constant', 'external',
+        'state' or 'variable_of_integration'.
+    
+    """
+    analysedModel=analyser.model()
+    for i in range(analysedModel.variableCount()):
+        avar=analysedModel.variable(i)
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        
+    for i in range(analysedModel.stateCount()):
+        avar=analysedModel.state(i)
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        
+    avar=analysedModel.voi()
+    if avar:
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())  
+          
+    return -1, 'unknown'
+
+def _get_index_type_for_equivalent_variable(analyser, variable):
+    """Get the index and type of a variable in a module 
+    by searching through equivalent variables.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    variable: Variable
+        The CellML variable.
+
+    Returns
+    -------
+    tuple
+        (int, str)
+        The index and type of the variable.
+        If the variable is not found, the index is -1 and the type is 'unknown'.        
+    """
+
+    index, vtype = _get_index_type_for_variable(analyser,variable)
+    if vtype != 'unknown':
+        return index, vtype
+    else:
+        for i in range(variable.equivalentVariableCount()):
+            eqv = variable.equivalentVariable(i)
+            index, vtype = _get_index_type_for_variable(analyser, eqv)
+            if vtype != 'unknown':
+                return index, vtype
+    return -1, 'unknown'
+
+def _get_variable_indices(analyser, model, variables_info):
+    """Get the indices of a list of variables in a model.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    model: Model
+        The CellML model.
+    variables_info: dict
+        The variables information in the format of {id:{'component': , 'name': }}.
+
+    Raises
+    ------
+    ValueError
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    list
+        The indices of the variables in the generated python module.
+
+    Notes
+    -----
+    The indices should be in the same order as the variables in the dictionary.
+    Hence, Python 3.6+ is required.
+    """
+    try:
+        observables=get_observables(analyser, model, variables_info)
+    except ValueError as err:
+        print(str(err))
+        raise 
+    indices=[]
+    for _,observable in observables.items():
+        indices.append(observable['index'])
+
+    return indices
+
+def _find_variable(model, component_name, variable_name):
+    """ Find a variable in a CellML model based on component name and variable name.
+    
+    Parameters
+    ----------
+    model: Model
+        The CellML model.
+    component_name: str
+        The name of the component.
+    variable_name: str
+        The name of the variable.
+    
+    Raises
+    ------
+    ValueError
+        If the variable is not found in the model.
+
+    Returns
+    -------
+    Variable
+        The CellML variable found in the model.
+    """
+
+    def _find_variable_component(component):
+        if component.name()==component_name:
+            for v in range(component.variableCount()):
+                if component.variable(v).name()==variable_name:
+                    return component.variable(v)            
+        if component.componentCount()>0:
+            for c in range(component.componentCount()):
+                variable=_find_variable_component(component.component(c))
+                if variable:
+                    return variable
+        return None
+    
+    for c in range(model.componentCount()):
+        variable=_find_variable_component(model.component(c))
+        if variable:
+            return variable
+        
+    raise ValueError("Unable to find the variable {} in the component {} of the model".format(variable_name,component_name))

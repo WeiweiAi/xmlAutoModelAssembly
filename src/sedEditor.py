@@ -1,8 +1,18 @@
 import libsedml
 from libsedml import SedOperationReturnValue_toString
 import json
-import os
-from pathlib import PurePath
+
+"""
+====================
+SED-ML Editor
+====================
+
+This module provides functions to create and get the information of SED-ML elements.
+The SED-ML elements are defined in the libSEDML library.
+
+The validation could be overlapped with the libSEDML library.
+
+"""
 
 # Create a lookup table for the SED-ML type codes
 SEDML_TYPE_CODES = [libsedml.SEDML_SIMULATION_UNIFORMTIMECOURSE,
@@ -11,15 +21,14 @@ SEDML_TYPE_CODES = [libsedml.SEDML_SIMULATION_UNIFORMTIMECOURSE,
                     libsedml.SEDML_RANGE_UNIFORMRANGE,
                     libsedml.SEDML_RANGE_VECTORRANGE,
                     libsedml.SEDML_RANGE_FUNCTIONALRANGE,
+                    libsedml.SEDML_DATA_RANGE,
                     libsedml.SEDML_TASK,
                     libsedml.SEDML_TASK_REPEATEDTASK,
-                    libsedml.SEDML_TASK_PARAMETER_ESTIMATION,
-                    libsedml.SEDML_DATA_RANGE                    
-
+                    libsedml.SEDML_TASK_PARAMETER_ESTIMATION                                    
 ]
 
 SEDML_TYPE_CODES_TABLE = dict(zip(SEDML_TYPE_CODES, [libsedml.SedTypeCode_toString(i) for i in SEDML_TYPE_CODES]))
-CELLML_URN = 'urn:sedml:language:cellml'
+
 # save the SED-ML type codes to a json file
 def save_sedml_type_codes():
     with open('sedml_type_codes.json', 'w') as outfile:
@@ -33,49 +42,11 @@ def SEDML_TYPE_CODE_FROM_STR(type_str):
     return None
     
 
-def operation_flag_check(operation_flag, operation_name):
+def _operation_flag_check(operation_flag, operation_name):
     if operation_flag<0:
-        print('{operation_name} returned an error: {flag}'.format(operation_name=operation_name,flag=SedOperationReturnValue_toString(operation_flag)))
-        return False
+        raise ValueError('{operation_name} returned an error: {flag}'.format(operation_name=operation_name,flag=SedOperationReturnValue_toString(operation_flag)))
     else:
-        return True
-
-def target_component_variable(component, variable):
-    """
-    Create a target for a variable in a CellML model.
-
-    Parameters
-    ----------
-    component: str
-        The name of the component containing the variable.
-    variable: str
-        The name of the variable.
-
-    Returns
-    -------
-    str
-        XPath to the variable in the CellML model.
-    """
-    return "/cellml:model/cellml:component[@name=&quot;{component}&quot;]/cellml:variable[@name=&quot;{variable}&quot;]".format(component=component, variable=variable)
-
-def target_component_variable_initial(component, variable):
-    """
-    Create a target for a variable in a CellML model.
-
-    Parameters
-    ----------
-    component: str
-        The name of the component containing the variable.
-    variable: str
-        The name of the variable.
-
-    Returns
-    -------
-    str
-        XPath to the variable initial_value in the CellML model.
-    """
-    return "/cellml:model/cellml:component[@name=&quot;{component}&quot;]/cellml:variable[@name=&quot;{variable}&quot;]/@initial_value".format(component=component, variable=variable)
-
+        return
 
 def _setDimensionDescription(sed_dimDescription, dimDict):
     """Set the dimensions and data types of the external data.
@@ -93,7 +64,13 @@ def _setDimensionDescription(sed_dimDescription, dimDict):
         If dim2 is defined, the required attributes are 'id','indexType','valueType'.        
         The valueType is the data type of the external data.
         The valueType is defined on the atomicDescription.
-
+    
+    Raises
+    ------
+    ValueError
+        If the required attributes are not set.
+        If the any operation returns an error.
+        
     Side effects
     ------------
     sed_dimDescription: SedDimensionDescription
@@ -110,43 +87,25 @@ def _setDimensionDescription(sed_dimDescription, dimDict):
     """
 
     dim1_Description=libsedml.CompositeDescription()
-    if 'indexType' not in dimDict:
-        print('The indexType attribute of a dimension 1 description is required.')
-        return False
-    else:
-        if not operation_flag_check(dim1_Description.setIndexType(dimDict['indexType']), 'Set the indexType attribute of a dimension description'):
-            return False
-    if 'id' not in dimDict:
-        print('The id attribute of a dimension 1 description is required.')
-        return False
-    else:
-        if not operation_flag_check(dim1_Description.setId(dimDict['id']), 'Set the id attribute of a dimension description'):
-            return False
-    if not operation_flag_check(dim1_Description.setName(dimDict['name']), 'Set the name attribute of a dimension description'):
-        return False
-    if 'dim2' in dimDict:
-        dim2_Description=dim1_Description.createCompositeDescription()
-        if 'indexType' not in dimDict['dim2'] or dimDict['dim2']['indexType'] is None or dimDict['dim2']['indexType']=='':
-            print('The indexType attribute of a dimension 2 description is required.')
-            return False
-        else:            
-            if not operation_flag_check(dim2_Description.setIndexType(dimDict['dim2']['indexType']), 'Set the indexType attribute of a dimension description'):
-                return False
-        if 'id' not in dimDict['dim2']:
-            print('The id attribute of a dimension 2 description is required.')
-            return False
-        else:
-            if not operation_flag_check(dim2_Description.setId(dimDict['dim2']['id']), 'Set the id attribute of a dimension description'):
-                return False
-        if not operation_flag_check(dim2_Description.setName(dimDict['dim2']['name']), 'Set the name attribute of a dimension description'):
-            return False        
-        atomic_Desc=dim2_Description.createAtomicDescription()
-        if 'valueType' not in dimDict['dim2']:
-            print('The valueType attribute of a dimension 2 description is required.')
-            return False
-        else:
-            if not operation_flag_check(atomic_Desc.setValueType(dimDict['dim2']['valueType']), 'Set the valueType attribute of a dimension description'):
-                return False  
+    if 'indexType' not in dimDict or 'id' not in dimDict:
+        raise ValueError('The indexType and id attributes of a dimension 1 description are required.')
+    try:
+        _operation_flag_check(dim1_Description.setIndexType(dimDict['indexType']), 'Set the indexType attribute of a dimension description')
+        _operation_flag_check(dim1_Description.setId(dimDict['id']), 'Set the id attribute of a dimension description')
+        if 'name' in dimDict:
+            _operation_flag_check(dim1_Description.setName(dimDict['name']), 'Set the name attribute of a dimension description')
+        if 'dim2' in dimDict:
+            dim2_Description=dim1_Description.createCompositeDescription()
+            if 'indexType' not in dimDict['dim2'] or 'id' not in dimDict['dim2'] or 'valueType' not in dimDict['dim2']:
+                raise ValueError('The indexType, id and valueType attributes of a dimension 2 description are required')
+            _operation_flag_check(dim2_Description.setIndexType(dimDict['dim2']['indexType']), 'Set the indexType attribute of a dimension description')
+            _operation_flag_check(dim2_Description.setId(dimDict['dim2']['id']), 'Set the id attribute of a dimension description')
+            atomic_Desc=dim2_Description.createAtomicDescription()
+            _operation_flag_check(atomic_Desc.setValueType(dimDict['dim2']['valueType']), 'Set the valueType attribute of a dimension description')
+            if 'name' in dimDict['dim2']:
+                _operation_flag_check(dim2_Description.setName(dimDict['dim2']['name']), 'Set the name attribute of a dimension description')
+    except ValueError as e:
+        raise            
     sed_dimDescription.append(dim1_Description)
     return True 
 
@@ -162,15 +121,19 @@ def _get_dict_dimDescription(sed_dimDescription):
     -----
     Only two dimensions are supported.
     
+    Raises
+    ------
+    ValueError
+        If the valueType attribute of a dimension 2 description is not set.
+
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: 
         {'id':'Index','name':'Index','indexType':'integer',
          'dim2':{'id':'ColumnIds','name':'ColumnIds','indexType':'string','valueType':'double'}
          }
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
     dict_dimDescription = {}
     dim1_Description = sed_dimDescription.get(0)
@@ -188,8 +151,7 @@ def _get_dict_dimDescription(sed_dimDescription):
         if dim2_Description.get(0).isSetValueType():
             dict_dimDescription['dim2']['valueType'] = dim2_Description.get(0).getValueType()
         else:
-            print('The valueType attribute of a dimension 2 description is required.')
-            return False
+            raise ValueError('The valueType attribute of a dimension 2 description is required.')
     return dict_dimDescription
 
 def _setSlice(sed_slice, reference,value=None,index=None,startIndex=None,endIndex=None):
@@ -212,6 +174,11 @@ def _setSlice(sed_slice, reference,value=None,index=None,startIndex=None,endInde
     endIndex: integer, optional
         The endIndex attribute is an integer that specifies the last index in the referenced set of indices to be used.   
     
+    Raises
+    ------
+    ValueError
+        If the any operation returns an error.
+
     Side effects
     ------------
     sed_slice: SedSlice
@@ -222,21 +189,18 @@ def _setSlice(sed_slice, reference,value=None,index=None,startIndex=None,endInde
     bool
         Whether the slice is set successfully.
     """
-
-    if not operation_flag_check(sed_slice.setReference(reference), 'Set the reference attribute of a slice'):
-        return False
-    if value:
-        if not operation_flag_check(sed_slice.setValue(value), 'Set the value attribute of a slice'):
-            return False          
-    if index:
-        if not operation_flag_check(sed_slice.setIndex(index), 'Set the index attribute of a slice'):
-            return False
-    if startIndex:
-        if not operation_flag_check(sed_slice.setStartIndex(startIndex), 'Set the startIndex attribute of a slice'):
-            return False
-    if endIndex:
-        if not operation_flag_check(sed_slice.setEndIndex(endIndex), 'Set the endIndex attribute of a slice'):
-            return False
+    try:
+        _operation_flag_check(sed_slice.setReference(reference), 'Set the reference attribute of a slice')
+        if value:
+            _operation_flag_check(sed_slice.setValue(value), 'Set the value attribute of a slice')
+        if index:
+            _operation_flag_check(sed_slice.setIndex(index), 'Set the index attribute of a slice')
+        if startIndex:
+            _operation_flag_check(sed_slice.setStartIndex(startIndex), 'Set the startIndex attribute of a slice')
+        if endIndex:
+            _operation_flag_check(sed_slice.setEndIndex(endIndex), 'Set the endIndex attribute of a slice')
+    except ValueError as e:
+        raise
     return True
 
 def _get_dict_slice(sed_slice):
@@ -246,21 +210,24 @@ def _get_dict_slice(sed_slice):
     ----------
     sed_slice: SedSlice
         An instance of SedSlice.
+    
+    Raises
+    ------
+    ValueError
+        If the reference attribute of a slice is not set.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'reference':'ColumnIds','value':'csv_column_time','index':'str','startIndex':int,'endIndex':int}
         Only the attributes that are set will be returned.
         'reference' is the only required attribute.
-        If the required attributes are not set, return False.
     """
     dict_slice = {}
     if sed_slice.isSetReference():
         dict_slice['reference'] = sed_slice.getReference()
     else:
-        print('The reference attribute of a slice is required.')
-        return False
+        raise ValueError('The reference attribute of a slice is required.')
     if sed_slice.isSetValue():
         dict_slice['value'] = sed_slice.getValue()
     if sed_slice.isSetIndex():
@@ -285,6 +252,14 @@ def _setDataSource(sed_dataSource,dict_dataSource):
         When the data format is csv, the indexSet attribute is not defined.
         If a DataSource does not define the indexSet attribute, it must contain Slice elements.
         If neither the indexSet attribute nor the listOfSlices attribute is defined, return False.
+    
+    Raises
+    ------
+    ValueError
+        If the id attribute of a data source is not set.
+        If the indexSet attribute and the slice elements of a data source are defined at the same time.
+        If neither the indexSet attribute nor the slice elements of a data source are defined.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -298,43 +273,40 @@ def _setDataSource(sed_dataSource,dict_dataSource):
     """
     
     if 'id' not in dict_dataSource:
-        print('The id attribute of a data source is required.')
-        return False
-    else:
-        if not operation_flag_check(sed_dataSource.setId(dict_dataSource['id']), 'Set the id attribute of a data source'):
-            return False
-    if 'name' in dict_dataSource:
-        if not operation_flag_check(sed_dataSource.setName(dict_dataSource['name']), 'Set the name attribute of a data source'):
-            return False
-    if 'indexSet' in dict_dataSource: # when the data format is NuML
-        if not operation_flag_check(sed_dataSource.setIndexSet(dict_dataSource['indexSet']), 'Set the indexSet attribute of a data source'):
-            return False
-    elif 'listOfSlices' in dict_dataSource:
-        for dict_slice in dict_dataSource['listOfSlices']:
-            sed_slice = sed_dataSource.createSlice()
-            if 'value' not in dict_slice:
-                value=None
-            else:
-                value=dict_slice['value']
-            if 'index' not in dict_slice:
-                index=None
-            else:
-                index=dict_slice['index']
-            if 'startIndex' not in dict_slice:
-                startIndex=None
-            else:
-                startIndex=dict_slice['startIndex']
-            if 'endIndex' not in dict_slice:
-                endIndex=None
-            else:
-                endIndex=dict_slice['endIndex']
+        raise ValueError('The id attribute of a data source is required.')
+    if 'indexSet' in dict_dataSource and 'listOfSlices' in dict_dataSource:
+        raise ValueError('The indexSet attribute and the slice elements of a data source cannot be defined at the same time.')
+    if 'indexSet' not in dict_dataSource and 'listOfSlices' not in dict_dataSource:
+        raise ValueError('The indexSet attribute or the slice elements of a data source is required.')
+    try:
+        _operation_flag_check(sed_dataSource.setId(dict_dataSource['id']), 'Set the id attribute of a data source')
+        if 'name' in dict_dataSource:
+            _operation_flag_check(sed_dataSource.setName(dict_dataSource['name']), 'Set the name attribute of a data source')
+        if 'indexSet' in dict_dataSource: # when the data format is NuML
+            _operation_flag_check(sed_dataSource.setIndexSet(dict_dataSource['indexSet']), 'Set the indexSet attribute of a data source')
+        elif 'listOfSlices' in dict_dataSource:
+            for dict_slice in dict_dataSource['listOfSlices']:
+                sed_slice = sed_dataSource.createSlice()
+                if 'value' not in dict_slice:
+                    value=None
+                else:
+                    value=dict_slice['value']
+                if 'index' not in dict_slice:
+                    index=None
+                else:
+                    index=dict_slice['index']
+                if 'startIndex' not in dict_slice:
+                    startIndex=None
+                else:
+                    startIndex=dict_slice['startIndex']
+                if 'endIndex' not in dict_slice:
+                    endIndex=None
+                else:
+                    endIndex=dict_slice['endIndex']
+                _setSlice(sed_slice, dict_slice['reference'],value,index,startIndex,endIndex)
+    except ValueError as e:
+        raise
 
-            if not _setSlice(sed_slice, dict_slice['reference'],value,index,startIndex,endIndex):
-                return False 
-    else:        
-        print('The indexSet attribute is not defined nor the slice elements of a data source are defined.')
-        return False
-       
     return True
 
 def _get_dict_dataSource(sed_dataSource):
@@ -344,24 +316,30 @@ def _get_dict_dataSource(sed_dataSource):
     ----------
     sed_dataSource: SedDataSource
         An instance of SedDataSource.
+    
+    Raises
+    ------
+    ValueError
+        If the id attribute of a data source is not set.
+        If the indexSet attribute and the slice elements of a data source are defined at the same time.
+        If neither the indexSet attribute nor the slice elements of a data source are defined.
+        If _get_dict_slice(sed_slice) failed.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'id':'data_source_1','name':'data_source_1','indexSet':'str','listOfSlices':[dict_slice]}
         Only the attributes that are set will be returned.
         'id' is a required attribute.
-        If sed_dataSource.isSetId() returns False, return False.
-        If neither the indexSet attribute nor the listOfSlices attribute is defined, return False.
-        If _get_dict_slice(sed_slice) returns False, return False.
     """
 
     dict_dataSource = {}
     if sed_dataSource.isSetId():
         dict_dataSource['id'] = sed_dataSource.getId()
     else:
-        print('The id attribute of a data source is required.')
-        return False
+        raise ValueError('The id attribute of a data source is required.')
+    if sed_dataSource.isSetIndexSet() and sed_dataSource.getNumSlices()>0:
+        raise ValueError('The indexSet attribute and the slice elements of a data source cannot be defined at the same time.')
     if sed_dataSource.isSetName():
         dict_dataSource['name'] = sed_dataSource.getName()
     if sed_dataSource.isSetIndexSet():
@@ -369,14 +347,13 @@ def _get_dict_dataSource(sed_dataSource):
     elif sed_dataSource.getNumSlices()>0:
         dict_dataSource['listOfSlices'] = []
         for sed_slice in sed_dataSource.getListOfSlices():
-            dict_slice = _get_dict_slice(sed_slice)
-            if not dict_slice:
-                return False
-            else:
-                dict_dataSource['listOfSlices'].append(_get_dict_slice(sed_slice))
+            try:
+                dict_slice = _get_dict_slice(sed_slice)
+            except ValueError as e:
+                raise
+            dict_dataSource['listOfSlices'].append(dict_slice)
     else:
-        print('The indexSet attribute is not defined nor the slice elements of a data source are defined.')
-        return False
+        raise ValueError('The indexSet attribute or the slice elements of a data source is required.')
     return dict_dataSource
 
 def create_dataDescription(doc, dict_dataDescription):
@@ -398,44 +375,44 @@ def create_dataDescription(doc, dict_dataDescription):
         The dimensionDescription attribute is optional.
         The listOfDataSources attribute is optional.
     
+    Raises
+    ------
+    ValueError
+        If the id or source attributes of a data description are not set.
+        If any operation returns an error.
+
     Returns
     -------
-    bool or SedDataDescription
-        If the data description is created successfully, return the instance of SedDataDescription; otherwise, return False
+    SedDataDescription
+        An instance of SedDataDescription.
+       
     """
     
     sed_dataDescription = doc.createDataDescription()
-    if 'id' not in dict_dataDescription:
-        print('The id attribute of a data description is required.')
-        return False
-    else:        
-        if not operation_flag_check(sed_dataDescription.setId(dict_dataDescription['id']), 'Set the id attribute of a data description'):
-            return False
-    if 'source' not in dict_dataDescription:
-        print('The source attribute of a data description is required.')
-        return False
-    else:
-        if not operation_flag_check(sed_dataDescription.setSource(dict_dataDescription['source']), 'Set the source attribute of a data description'):
-            return False
-    if 'format' in dict_dataDescription:
-        if not operation_flag_check(sed_dataDescription.setFormat(dict_dataDescription['format']), 'Set the format attribute of a data description'):
-            return False
-    else: # the default is NuML
-        if not operation_flag_check(sed_dataDescription.setFormat('urn:sedml:format:numl)'), 'Set the format attribute of a data description'):
-            return False
-    if 'name' in dict_dataDescription:
-        if not operation_flag_check(sed_dataDescription.setName(dict_dataDescription['name']), 'Set the name attribute of a data description'):
-            return False
-    if 'dimensionDescription' in dict_dataDescription:
-        sed_dimDescription = sed_dataDescription.createDimensionDescription()
-        dict_dimDescription=dict_dataDescription['dimensionDescription']
-        if not _setDimensionDescription(sed_dimDescription, dict_dimDescription):
-            return False
-    if 'listOfDataSources' in dict_dataDescription:
-        for dict_dataSource in dict_dataDescription['listOfDataSources']:
-            sed_dataSource = sed_dataDescription.createDataSource()
-            if not _setDataSource(sed_dataSource, dict_dataSource):
-                return False
+
+    if 'id' not in dict_dataDescription or 'source' not in dict_dataDescription:
+        raise ValueError('The id and source attributes of a data description are required.')
+
+    try:
+        _operation_flag_check(sed_dataDescription.setId(dict_dataDescription['id']), 'Set the id attribute of a data description')
+        _operation_flag_check(sed_dataDescription.setSource(dict_dataDescription['source']), 'Set the source attribute of a data description')
+        if 'format' in dict_dataDescription:
+            _operation_flag_check(sed_dataDescription.setFormat(dict_dataDescription['format']), 'Set the format attribute of a data description')
+        else: # the default is NuML
+            _operation_flag_check(sed_dataDescription.setFormat('urn:sedml:format:numl)'), 'Set the format attribute of a data description')
+        if 'name' in dict_dataDescription:
+            _operation_flag_check(sed_dataDescription.setName(dict_dataDescription['name']), 'Set the name attribute of a data description')
+        if 'dimensionDescription' in dict_dataDescription:
+            sed_dimDescription = sed_dataDescription.createDimensionDescription()
+            dict_dimDescription=dict_dataDescription['dimensionDescription']
+            _setDimensionDescription(sed_dimDescription, dict_dimDescription)
+        if 'listOfDataSources' in dict_dataDescription:
+            for dict_dataSource in dict_dataDescription['listOfDataSources']:
+                sed_dataSource = sed_dataDescription.createDataSource()
+                _setDataSource(sed_dataSource, dict_dataSource)
+    except ValueError as e:
+        raise  
+
     return sed_dataDescription
 
 def get_dict_dataDescription(sed_dataDescription):
@@ -446,30 +423,32 @@ def get_dict_dataDescription(sed_dataDescription):
     ----------
     sed_dataDescription: SedDataDescription
         An instance of SedDataDescription.
+    
+    Raises
+    ------
+    ValueError
+        If the id or source attributes of a data description are not set.
+        If _get_dict_dimDescription(sed_dimDescription) failed.
+        If _get_dict_dataSource(sed_dataSource) failed.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: 
         {'id':'data_description_1','name':'data_description_1', 'source':'file.csv','format':URN string,
          'dimensionDescription':dict_dimDescription,'listOfDataSources':[dict_dataSource]
          }. 
         Only the attributes that are set will be returned.
         'id' and 'source' are required attributes.
-        If required attributes are not set, return False.
     """
 
     dict_dataDescription = {}
-    if sed_dataDescription.isSetId():
-        dict_dataDescription['id'] = sed_dataDescription.getId()
-    else:
-        print('The id attribute of a data description is required.')
-        return False
-    if sed_dataDescription.isSetSource():
-        dict_dataDescription['source'] = sed_dataDescription.getSource()
-    else:
-        print('The source attribute of a data description is required.')
-        return False
+    if not sed_dataDescription.isSetId() or sed_dataDescription.unsetSource():
+        raise ValueError('The id and source attributes of a data description are required.')
+  
+    dict_dataDescription['id'] = sed_dataDescription.getId()
+    dict_dataDescription['source'] = sed_dataDescription.getSource()
+
     if sed_dataDescription.isSetFormat():
         dict_dataDescription['format'] = sed_dataDescription.getFormat()
     if sed_dataDescription.isSetName():
@@ -477,19 +456,19 @@ def get_dict_dataDescription(sed_dataDescription):
     if sed_dataDescription.isSetDimensionDescription():
         dict_dataDescription['dimensionDescription'] = {}
         sed_dimDescription = sed_dataDescription.getDimensionDescription()
-        dict_dimDescription = _get_dict_dimDescription(sed_dimDescription)
-        if not dict_dimDescription:
-            return False
-        else:
-            dict_dataDescription['dimensionDescription'] = dict_dimDescription
+        try:
+            dict_dimDescription = _get_dict_dimDescription(sed_dimDescription)
+        except ValueError as e:
+            raise
+        dict_dataDescription['dimensionDescription'] = dict_dimDescription
     if sed_dataDescription.getNumDataSources()>0:
         dict_dataDescription['listOfDataSources'] = []
     for sed_dataSource in sed_dataDescription.getListOfDataSources():
-        dict_dataSource=_get_dict_dataSource(sed_dataSource)
-        if not dict_dataSource:
-            return False
-        else:
-            dict_dataDescription['listOfDataSources'].append(dict_dataSource)
+        try:
+            dict_dataSource = _get_dict_dataSource(sed_dataSource)
+        except ValueError as e:
+            raise
+        dict_dataDescription['listOfDataSources'].append(dict_dataSource)
     return dict_dataDescription
 
 def change_init(sedModel, dict_change_Attribute):
@@ -503,6 +482,12 @@ def change_init(sedModel, dict_change_Attribute):
     dict_change_Attribute: dict
         The dictionary format: {'target': target_component_variable,'newValue':'1.0'}
         The target and newValue attributes are required.
+    
+    Raises
+    ------
+    ValueError
+        If the target and newValue attributes of a change are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -515,20 +500,14 @@ def change_init(sedModel, dict_change_Attribute):
         Whether the change is set successfully.
     """  
     change = sedModel.createChangeAttribute()
-    if 'target' not in dict_change_Attribute:
-        print('The target attribute of a change is required.')
-        return False
-    else:
-        if not operation_flag_check(change.setTarget(dict_change_Attribute['target']), 'Set the target attribute of a change'):
-            return False
-    if 'newValue' not in dict_change_Attribute:
-        print('The newValue attribute of a change is required.')
-        return False
-    else:    
-        if not operation_flag_check(change.setNewValue(dict_change_Attribute['newValue']), 'Set the newValue attribute of a change'):
-            return False
-    return True
-    
+    if 'target' not in dict_change_Attribute or 'newValue' not in dict_change_Attribute:
+        raise ValueError('The target and newValue attributes of a change are required.')
+    try:
+        _operation_flag_check(change.setTarget(dict_change_Attribute['target']), 'Set the target attribute of a change')
+        _operation_flag_check(change.setNewValue(dict_change_Attribute['newValue']), 'Set the newValue attribute of a change')
+    except ValueError as e:
+        raise
+    return True   
 
 def create_sedModel(doc,dict_model):
     """
@@ -542,6 +521,12 @@ def create_sedModel(doc,dict_model):
         The dictionary format: {'id':'model1','source':'model.cellml','language':CELLML_URN,'listOfChanges':[dict_change_Attribute]}
         The id, source and language attributes of a model are required.
         The listOfChanges attribute is optional.
+   
+    Raises
+    ------
+    ValueError
+        If the id, source and language attributes of a model are not set.
+        If any operation returns an error.
 
     Notes
     -----
@@ -550,25 +535,23 @@ def create_sedModel(doc,dict_model):
 
     Returns
     -------
-    bool or SedModel
-        If the model is created successfully, return the instance of SedModel; otherwise, return False
+    SedModel
+        An instance of SedModel.
     """
 
     sedModel = doc.createModel()
     if 'id' not in dict_model or 'source' not in dict_model or 'language' not in dict_model:
-        print('The id, source and language attributes of a model are required.')
-        return False
-    else:
-        if not operation_flag_check(sedModel.setId(dict_model['id']), 'Set the id attribute of a model'):
-            return False
-        if not operation_flag_check(sedModel.setSource(dict_model['source']), 'Set the source attribute of a model'):
-            return False
-        if not operation_flag_check(sedModel.setLanguage(dict_model['language']), 'Set the language attribute of a model'):
-            return False
+        raise ValueError('The id, source and language attributes of a model are required.')
+    try:
+        _operation_flag_check(sedModel.setId(dict_model['id']), 'Set the id attribute of a model')
+        _operation_flag_check(sedModel.setSource(dict_model['source']), 'Set the source attribute of a model')
+        _operation_flag_check(sedModel.setLanguage(dict_model['language']), 'Set the language attribute of a model')
         if 'listOfChanges' in dict_model:
             for dict_change_Attribute in dict_model['listOfChanges']:
-                if not change_init(sedModel, dict_change_Attribute):
-                    return False
+                change_init(sedModel, dict_change_Attribute)
+    except ValueError as e:
+        raise
+
     return sedModel
 
 def get_dict_model(sedModel):
@@ -586,10 +569,9 @@ def get_dict_model(sedModel):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'id':'model1','source':'model.cellml','language':CELLML_URN,'listOfChanges':[dict_change_Attribute]}
         Only the attributes that are set will be returned.
-        If the change type is not SedChangeAttribute, return False.
     """
     
     dict_model = {}   
@@ -605,8 +587,8 @@ def get_dict_model(sedModel):
             dict_change_Attribute['newValue'] = change.getNewValue()
             dict_model['listOfChanges'].append(dict_change_Attribute)
         else:
-            print('The change is not an attribute change.')
-            return False        
+            raise ValueError('The change type is not SedChangeAttribute.')
+               
     return dict_model
 
 def _setAlgorithmParameter(sed_algorithm, dict_algorithmParameter):
@@ -626,6 +608,12 @@ def _setAlgorithmParameter(sed_algorithm, dict_algorithmParameter):
         this should be encoded in the string as a KISAO:0000629, 
         which indicates that the value is Null.
     
+    Raises
+    ------
+    ValueError
+        If the kisaoID and value attributes of an algorithm parameter are not set.
+        If any operation returns an error.
+
     Side effects
     ------------
     sed_algorithm: SedAlgorithm
@@ -638,18 +626,16 @@ def _setAlgorithmParameter(sed_algorithm, dict_algorithmParameter):
     """
 
     sed_algorithmParameter = sed_algorithm.createAlgorithmParameter()
-    if 'name' in dict_algorithmParameter:
-        if not operation_flag_check(sed_algorithmParameter.setName(dict_algorithmParameter['name']), 'Set the name attribute of an algorithm parameter'):
-            return False
     if 'kisaoID' not in dict_algorithmParameter or 'value' not in dict_algorithmParameter or dict_algorithmParameter['value']=='':
-        print('The kisaoID and value are required.')
-        return False
-    else:
-        if not operation_flag_check(sed_algorithmParameter.setKisaoID(dict_algorithmParameter['kisaoID']), 'Set the kisaoID attribute of an algorithm parameter'):
-            return False
-        if not operation_flag_check(sed_algorithmParameter.setValue(dict_algorithmParameter['value']), 'Set the value attribute of an algorithm parameter'):
-            return False
-    return True  
+        raise ValueError('The kisaoID and value are required.')
+    try:
+        _operation_flag_check(sed_algorithmParameter.setKisaoID(dict_algorithmParameter['kisaoID']), 'Set the kisaoID attribute of an algorithm parameter')
+        _operation_flag_check(sed_algorithmParameter.setValue(dict_algorithmParameter['value']), 'Set the value attribute of an algorithm parameter')
+        if 'name' in dict_algorithmParameter:
+            _operation_flag_check(sed_algorithmParameter.setName(dict_algorithmParameter['name']), 'Set the name attribute of an algorithm parameter')
+    except ValueError as e:
+        raise
+    return True
 
 def _get_dict_algorithmParameter(sed_algorithmParameter):
     """Get the information of an algorithm parameter
@@ -658,13 +644,17 @@ def _get_dict_algorithmParameter(sed_algorithmParameter):
     ----------
     sed_algorithmParameter: SedAlgorithmParameter
         An instance of SedAlgorithmParameter.
+    
+    Raises
+    ------
+    ValueError
+        If the kisaoID and value attributes of an algorithm parameter are not set.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'kisaoID':'KISAO:0000019','value':'1.0','name':'optional, describe the meaning of the param',}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
     dict_algorithmParameter = {}
     if sed_algorithmParameter.isSetName():
@@ -673,8 +663,7 @@ def _get_dict_algorithmParameter(sed_algorithmParameter):
         dict_algorithmParameter['kisaoID'] = sed_algorithmParameter.getKisaoID()
         dict_algorithmParameter['value'] = sed_algorithmParameter.getValue()
     else:
-        print('The kisaoID and value are required.')
-        return False
+        raise ValueError('The kisaoID and value attributes of an algorithm parameter are required.')
     return dict_algorithmParameter
 
 def _setAlgorithm(sed_algorithm, dict_algorithm):
@@ -687,6 +676,12 @@ def _setAlgorithm(sed_algorithm, dict_algorithm):
     dict_algorithm: dict
         The dictionary format: {'kisaoID':'KISAO:0000030','name':'optional,e.g,time course simulation over 100 minutes', 'listOfAlgorithmParameters':[dict_algorithmParameter]}
     
+    Raises
+    ------
+    ValueError
+        If the kisaoID attribute of an algorithm is not set.
+        If any operation returns an error.
+
     Side effects
     ------------
     sed_algorithm: SedAlgorithm
@@ -699,20 +694,18 @@ def _setAlgorithm(sed_algorithm, dict_algorithm):
     """
    
     if 'kisaoID' not in dict_algorithm:
-        print('The kisaoID attribute of an algorithm is required.')
-        return False
-    else:
-        if not operation_flag_check(sed_algorithm.setKisaoID(dict_algorithm['kisaoID']), 'Set the kisaoID attribute of an algorithm'):
-            return False
-    if 'name' in dict_algorithm:
-        if not operation_flag_check(sed_algorithm.setName(dict_algorithm['name']), 'Set the name attribute of an algorithm'):
-            return False
-    if 'listOfAlgorithmParameters' in dict_algorithm:
-        for dict_algorithmParameter in dict_algorithm['listOfAlgorithmParameters']:
-            if not _setAlgorithmParameter(sed_algorithm, dict_algorithmParameter):
-                return False
+        raise ValueError('The kisaoID attribute of an algorithm is required.')
+    try:
+        _operation_flag_check(sed_algorithm.setKisaoID(dict_algorithm['kisaoID']), 'Set the kisaoID attribute of an algorithm')
+        if 'name' in dict_algorithm:
+            _operation_flag_check(sed_algorithm.setName(dict_algorithm['name']), 'Set the name attribute of an algorithm')
+        if 'listOfAlgorithmParameters' in dict_algorithm:
+            for dict_algorithmParameter in dict_algorithm['listOfAlgorithmParameters']:
+                _setAlgorithmParameter(sed_algorithm, dict_algorithmParameter)
+    except ValueError as e:
+        raise
     return True
-
+    
 def get_dict_algorithm(sed_algorithm):
     """Get the information of an algorithm
     
@@ -720,6 +713,12 @@ def get_dict_algorithm(sed_algorithm):
     ----------
     sed_algorithm: SedAlgorithm
         An instance of SedAlgorithm.
+    
+    Raises
+    ------
+    ValueError
+        If the kisaoID attribute of an algorithm is not set.
+        If _get_dict_algorithmParameter(sed_algorithmParameter) failed.
 
     Notes
     -----
@@ -727,27 +726,24 @@ def get_dict_algorithm(sed_algorithm):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'kisaoID':'KISAO:0000030','name':'optional,e.g,time course simulation over 100 minutes', 'listOfAlgorithmParameters':[dict_algorithmParameter]}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
     dict_algorithm = {}
-    if sed_algorithm.isSetKisaoID():
-        dict_algorithm['kisaoID'] = sed_algorithm.getKisaoID()
-    else:
-        print('The kisaoID attribute of an algorithm is required.')
-        return False
+    if sed_algorithm.unsetKisaoID():
+        raise ValueError('The kisaoID attribute of an algorithm is required.')
+    dict_algorithm['kisaoID'] = sed_algorithm.getKisaoID()
     if sed_algorithm.isSetName():
         dict_algorithm['name'] = sed_algorithm.getName()
     if sed_algorithm.getNumAlgorithmParameters()>0:
         dict_algorithm['listOfAlgorithmParameters'] = []
     for sed_algorithmParameter in sed_algorithm.getListOfAlgorithmParameters():
-        dict_algorithmParameter = _get_dict_algorithmParameter(sed_algorithmParameter)
-        if not dict_algorithmParameter:
-            return False
-        else:
-            dict_algorithm['listOfAlgorithmParameters'].append(dict_algorithmParameter)
+        try:
+            dict_algorithmParameter = _get_dict_algorithmParameter(sed_algorithmParameter)
+        except ValueError as e:
+            raise
+        dict_algorithm['listOfAlgorithmParameters'].append(dict_algorithmParameter)
     return dict_algorithm
 
 def create_sim_UniformTimeCourse(doc,dict_uniformTimeCourse):
@@ -763,28 +759,30 @@ def create_sim_UniformTimeCourse(doc,dict_uniformTimeCourse):
         {'id':'timeCourse1', 'type': 'UniformTimeCourse','algorithm':dict_algorithm, 'initialTime':0.0,'outputStartTime':0.0,'outputEndTime':10.0,'numberOfSteps':1000}
         The id, initialTime, outputStartTime, outputEndTime, numberOfSteps and algorithm of a simulation are required.
     
+    Raises
+    ------
+    ValueError
+        If the id, initialTime, outputStartTime, outputEndTime, numberOfSteps and algorithm of a simulation are not set.
+        If any operation returns an error.
+
     Returns
     -------
-    bool or SedUniformTimeCourse
-        If the simulation is created successfully, return the instance of SedUniformTimeCourse; otherwise, return False
+    SedUniformTimeCourse
+        An instance of SedUniformTimeCourse.
     """
     if 'id' not in dict_uniformTimeCourse or 'initialTime' not in dict_uniformTimeCourse or 'outputStartTime' not in dict_uniformTimeCourse or 'outputEndTime' not in dict_uniformTimeCourse or 'numberOfSteps' not in dict_uniformTimeCourse or 'algorithm' not in dict_uniformTimeCourse:
-        print('The id, initialTime, outputStartTime, outputEndTime, numberOfSteps and algorithm attributes of a simulation are required.')
-        return False
-    sim = doc.createUniformTimeCourse()    
-    if not operation_flag_check(sim.setId(dict_uniformTimeCourse['id']), 'Set the id attribute of a simulation'):
-        return False
-    if not operation_flag_check(sim.setInitialTime(dict_uniformTimeCourse['initialTime']), 'Set the initialTime attribute of a simulation'):
-        return False
-    if not operation_flag_check(sim.setOutputStartTime(dict_uniformTimeCourse['outputStartTime']), 'Set the outputStartTime attribute of a simulation'):
-        return False
-    if not operation_flag_check(sim.setOutputEndTime(dict_uniformTimeCourse['outputEndTime']), 'Set the outputEndTime attribute of a simulation'):
-        return False
-    if not operation_flag_check(sim.setNumberOfPoints(dict_uniformTimeCourse['numberOfSteps']), 'Set the numberOfPoints attribute of a simulation'):
-        return False
-    alg = sim.createAlgorithm()
-    if not _setAlgorithm(alg, dict_uniformTimeCourse['algorithm']):
-        return False     
+        raise ValueError('The id, initialTime, outputStartTime, outputEndTime, numberOfSteps and algorithm of a simulation are required.')
+    sim = doc.createUniformTimeCourse() 
+    try:
+        _operation_flag_check(sim.setId(dict_uniformTimeCourse['id']), 'Set the id attribute of a simulation')
+        _operation_flag_check(sim.setInitialTime(dict_uniformTimeCourse['initialTime']), 'Set the initialTime attribute of a simulation')
+        _operation_flag_check(sim.setOutputStartTime(dict_uniformTimeCourse['outputStartTime']), 'Set the outputStartTime attribute of a simulation')
+        _operation_flag_check(sim.setOutputEndTime(dict_uniformTimeCourse['outputEndTime']), 'Set the outputEndTime attribute of a simulation')
+        _operation_flag_check(sim.setNumberOfPoints(dict_uniformTimeCourse['numberOfSteps']), 'Set the numberOfPoints attribute of a simulation')
+        alg = sim.createAlgorithm()
+        _setAlgorithm(alg, dict_uniformTimeCourse['algorithm'])
+    except ValueError as e:
+        raise
     return sim
 
 def get_dict_uniformTimeCourse(sim):
@@ -795,6 +793,11 @@ def get_dict_uniformTimeCourse(sim):
     ----------
     sim: SedUniformTimeCourse
         An instance of SedUniformTimeCourse.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_algorithm(sed_algorithm) failed.
 
     Notes
     -----
@@ -802,10 +805,9 @@ def get_dict_uniformTimeCourse(sim):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         {'id':'timeCourse1', 'type': 'UniformTimeCourse','algorithm':dict_algorithm, 'initialTime':0.0,'outputStartTime':0.0,'outputEndTime':10.0,'numberOfSteps':1000}.
-        If the required attributes are not set, return False.
    
     """
     dict_uniformTimeCourse = {}
@@ -816,11 +818,11 @@ def get_dict_uniformTimeCourse(sim):
     dict_uniformTimeCourse['outputEndTime'] = sim.getOutputEndTime()
     dict_uniformTimeCourse['numberOfSteps'] = sim.getNumberOfPoints()
     sed_algorithm = sim.getAlgorithm()
-    dict_algorithm = get_dict_algorithm(sed_algorithm)
-    if not dict_algorithm:
-        return False
-    else:
-        dict_uniformTimeCourse['algorithm']=dict_algorithm
+    try:
+        dict_algorithm = get_dict_algorithm(sed_algorithm)
+    except ValueError as e:
+        raise
+    dict_uniformTimeCourse['algorithm']=dict_algorithm
     return dict_uniformTimeCourse
 
 def create_sim_OneStep(doc,dict_oneStep):
@@ -834,24 +836,30 @@ def create_sim_OneStep(doc,dict_oneStep):
     dict_oneStep: dict
         The dictionary format: {'id':'oneStep1','type':'OneStep', 'step':0.1,'algorithm':dict_algorithm}
         The id, step and algorithm attributes of a simulation are required.
+    
+    Raises
+    ------
+    ValueError
+        If the id, step and algorithm attributes of a simulation are not set.
+        If any operation returns an error.
 
     Returns
     -------
-    bool or SedOneStep
-        If the simulation is created successfully, return the instance of SedOneStep; otherwise, return False
+    SedOneStep
+        An instance of SedOneStep.
     """
     if 'id' not in dict_oneStep or 'step' not in dict_oneStep or 'algorithm' not in dict_oneStep:
-        print('The id, step and algorithm attributes of a simulation are required.')
-        return False
-    sim = doc.createOneStep()    
-    if not operation_flag_check(sim.setId(dict_oneStep['id']), 'Set the id attribute of a simulation'):
-        return False
-    if not operation_flag_check(sim.setStep(dict_oneStep['step']), 'Set the step attribute of a simulation'):
-        return False
-    alg = sim.createAlgorithm()
-    if not _setAlgorithm(alg, dict_oneStep['algorithm']):
-        return False 
-    return sim
+        raise ValueError('The id, step and algorithm attributes of a simulation are required.')
+    sim = doc.createOneStep() 
+    try:
+        _operation_flag_check(sim.setId(dict_oneStep['id']), 'Set the id attribute of a simulation')
+        _operation_flag_check(sim.setStep(dict_oneStep['step']), 'Set the step attribute of a simulation')
+        alg = sim.createAlgorithm()
+        _setAlgorithm(alg, dict_oneStep['algorithm'])
+    except ValueError as e:
+        raise
+    return sim   
+    
 
 def get_dict_oneStep(sim):
     """
@@ -861,6 +869,11 @@ def get_dict_oneStep(sim):
     ----------
     sim: SedOneStep
         An instance of SedOneStep.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_algorithm(sed_algorithm) failed.
 
     Notes
     -----
@@ -878,9 +891,10 @@ def get_dict_oneStep(sim):
     dict_oneStep['type'] = libsedml.SedTypeCode_toString(sim.getTypeCode())
     dict_oneStep['step'] = sim.getStep()
     sed_algorithm = sim.getAlgorithm()
-    dict_algorithm = get_dict_algorithm(sed_algorithm)
-    if not dict_algorithm:
-        return False  
+    try:
+        dict_algorithm = get_dict_algorithm(sed_algorithm)
+    except ValueError as e:
+        raise  
     dict_oneStep['algorithm']=dict_algorithm
     return dict_oneStep
 
@@ -895,22 +909,28 @@ def create_sim_SteadyState(doc,dict_steadyState):
     dict_steadyState: dict
         The dictionary format: {'id':'steadyState1','type':'SteadyState', 'algorithm':dict_algorithm}
         The id and algorithm attributes of a simulation are required.
+    
+    Raises
+    ------
+    ValueError
+        If the id and algorithm attributes of a simulation are not set.
+        If any operation returns an error.
 
     Returns
     -------
-    bool or SedSteadyState
-        If the simulation is created successfully, return the instance of SedSteadyState; otherwise, return False
+    SedSteadyState
+        An instance of SedSteadyState.
     """
 
     if 'id' not in dict_steadyState or 'algorithm' not in dict_steadyState:
-        print('The id and algorithm attributes of a simulation are required.')
-        return False
+       raise ValueError('The id and algorithm attributes of a simulation are required.')
     sim = doc.createSteadyState()
-    if not operation_flag_check(sim.setId(dict_steadyState['id']), 'Set the id attribute of a simulation'):
-        return False
-    alg = sim.createAlgorithm()
-    if not _setAlgorithm(alg, dict_steadyState['algorithm']):
-        return False 
+    try:
+        _operation_flag_check(sim.setId(dict_steadyState['id']), 'Set the id attribute of a simulation')
+        alg = sim.createAlgorithm()
+        _setAlgorithm(alg, dict_steadyState['algorithm'])
+    except ValueError as e:
+        raise
     return sim
 
 def get_dict_steadyState(sim):
@@ -921,6 +941,11 @@ def get_dict_steadyState(sim):
     ----------
     sim: SedSteadyState
         An instance of SedSteadyState.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_algorithm(sed_algorithm) failed.
 
     Notes
     -----
@@ -928,17 +953,17 @@ def get_dict_steadyState(sim):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: {'id':'steadyState1','type':'SteadyState', 'algorithm':dict_algorithm}
-        If the required attributes are not set, return False.
     """
     dict_steadyState = {}
     dict_steadyState['id'] = sim.getId()
     dict_steadyState['type'] = libsedml.SedTypeCode_toString(sim.getTypeCode())
     sed_algorithm = sim.getAlgorithm()
-    dict_algorithm = get_dict_algorithm(sed_algorithm)
-    if not dict_algorithm:
-        return False
+    try:     
+        dict_algorithm = get_dict_algorithm(sed_algorithm)
+    except ValueError as e:
+        raise
     dict_steadyState['algorithm'] = dict_algorithm
     return dict_steadyState
 
@@ -957,22 +982,30 @@ def create_simulation(doc,dict_simulation):
         {'id':'oneStep1','type':'OneStep', 'step':0.1,'algorithm':dict_algorithm}
         If the simulation type is SteadyState, the dictionary format:
         {'id':'steadyState1','type':'SteadyState', 'algorithm':dict_algorithm}
+    
+    Raises
+    ------
+    ValueError
+        If the simulation type is not defined.
+        If any operation returns an error.
 
     Returns
     -------
-    bool or SedSimulation
-        If the simulation is created successfully, return the instance of SedSimulation; otherwise, return False
+    SedSimulation
+        An instance of SedSimulation.
     """
-
-    if dict_simulation['type'] == 'UniformTimeCourse':
-        sim = create_sim_UniformTimeCourse(doc,dict_simulation)
-    elif dict_simulation['type'] == 'OneStep':
-        sim = create_sim_OneStep(doc,dict_simulation)
-    elif dict_simulation['type'] == 'SteadyState':
-        sim = create_sim_SteadyState(doc,dict_simulation)
-    else:
-        print('The simulation is not defined.')
-        return False
+    
+    if dict_simulation['type'] != 'UniformTimeCourse' and dict_simulation['type'] != 'OneStep' and dict_simulation['type'] != 'SteadyState':
+        raise ValueError('The simulation type is not defined.')
+    try:
+        if dict_simulation['type'] == 'UniformTimeCourse':
+            sim = create_sim_UniformTimeCourse(doc,dict_simulation)
+        elif dict_simulation['type'] == 'OneStep':
+            sim = create_sim_OneStep(doc,dict_simulation)
+        elif dict_simulation['type'] == 'SteadyState':
+            sim = create_sim_SteadyState(doc,dict_simulation)
+    except ValueError as e:
+        raise
     return sim
 
 def get_dict_simulation(sim):
@@ -983,32 +1016,39 @@ def get_dict_simulation(sim):
     ----------
     sim: SedSimulation
         An instance of SedSimulation.
-
+    
+    Raises
+    ------
+    ValueError
+        If the simulation type is not defined.
+        If get_dict_uniformTimeCourse(sim), get_dict_oneStep(sim) or get_dict_steadyState(sim) failed.
+    
     Notes
     -----
     Assume the simulation has been created successfully.
 
     Returns
     -------
-    dict or bool
+    dict
         If the simulation type is UniformTimeCourse, the dictionary format:
         {'id':'timeCourse1', 'type': 'UniformTimeCourse','algorithm':dict_algorithm, 'initialTime':0.0,'outputStartTime':0.0,'outputEndTime':10.0,'numberOfSteps':1000}
         If the simulation type is OneStep, the dictionary format:
         {'id':'oneStep1','type':'OneStep', 'step':0.1,'algorithm':dict_algorithm}
         If the simulation type is SteadyState, the dictionary format:
         {'id':'steadyState1','type':'SteadyState', 'algorithm':dict_algorithm}
-        If the required attributes are not set, return False.
     """
-
-    if sim.isSedUniformTimeCourse():
-        dict_simulation = get_dict_uniformTimeCourse(sim)
-    elif sim.isSedOneStep():
-        dict_simulation = get_dict_oneStep(sim)
-    elif sim.isSedSteadyState():
-        dict_simulation = get_dict_steadyState(sim)
-    else:
-        print('The simulation is not defined.')
-        return False
+    
+    if not sim.isSedUniformTimeCourse() and not sim.isSedOneStep() and not sim.isSedSteadyState():
+        raise ValueError('The simulation type is not defined.')
+    try:
+        if sim.isSedUniformTimeCourse():
+            dict_simulation = get_dict_uniformTimeCourse(sim)
+        elif sim.isSedOneStep():
+            dict_simulation = get_dict_oneStep(sim)
+        elif sim.isSedSteadyState():
+            dict_simulation = get_dict_steadyState(sim)
+    except ValueError as e:
+        raise
     return dict_simulation
 
 def create_task(doc,dict_task):
@@ -1022,6 +1062,12 @@ def create_task(doc,dict_task):
     dict_task: dict
         The dictionary format: {'id':'task1','type':'Task','modelReference':'model1','simulationReference':'timeCourse1'}
         The id, modelReference and simulationReference attributes of a task are required.
+    
+    Raises
+    ------
+    ValueError
+        If the id, modelReference and simulationReference attributes of a task are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -1030,20 +1076,19 @@ def create_task(doc,dict_task):
 
     Returns
     -------
-    bool or SedTask
-        If the task is created successfully, return the instance of SedTask; otherwise, return False
+    SedTask
+        An instance of SedTask.
 
     """
     if 'id' not in dict_task or 'modelReference' not in dict_task or 'simulationReference' not in dict_task:
-        print('The id, modelReference and simulationReference attributes of a task are required.')
-        return False
+        raise ValueError('The id, modelReference and simulationReference attributes of a task are required.')
     task = doc.createTask()
-    if not operation_flag_check(task.setId(dict_task['id']), 'Set the id attribute of a task'):
-        return False
-    if not operation_flag_check(task.setModelReference(dict_task['modelReference']), 'Set the modelReference attribute of a task'):
-        return False
-    if not operation_flag_check(task.setSimulationReference(dict_task['simulationReference']), 'Set the simulationReference attribute of a task'):
-        return False
+    try:
+        _operation_flag_check(task.setId(dict_task['id']), 'Set the id attribute of a task')
+        _operation_flag_check(task.setModelReference(dict_task['modelReference']), 'Set the modelReference attribute of a task')
+        _operation_flag_check(task.setSimulationReference(dict_task['simulationReference']), 'Set the simulationReference attribute of a task')
+    except ValueError as e:
+        raise
     return task
 
 def get_dict_task(task):
@@ -1087,6 +1132,14 @@ def _setRange(repeatedTask,dict_range):
         DataRange: {'id':'range1','type':'DataRange','sourceReference':'data_source_1'}
         to construct a range by reference to external data
     
+    Raises
+    ------
+    ValueError
+        If the id, start, end, numberOfPoints and type attributes of a UniformRange are not set.
+        If the id and values attributes of a VectorRange are not set.
+        If the id and sourceReference attributes of a DataRange are not set.
+        If any operation returns an error.
+
     Notes
     -----
     FunctionalRange is not supported.
@@ -1103,40 +1156,33 @@ def _setRange(repeatedTask,dict_range):
     """
     if dict_range['type'] == 'UniformRange':
         if 'id' not in dict_range or 'start' not in dict_range or 'end' not in dict_range or 'numberOfPoints' not in dict_range or 'type' not in dict_range:
-            print('The id, start, end, numberOfPoints and type attributes of a range are required.')
-            return False
-        sed_range = repeatedTask.createUniformRange()
-        if not operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setStart(dict_range['start']), 'Set the start attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setEnd(dict_range['end']), 'Set the end attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setNumberOfPoints(dict_range['numberOfPoints']), 'Set the numberOfPoints attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setType(dict_range['type']), 'Set the type attribute of a range'):
-            return False
+            raise ValueError('The id, start, end, numberOfPoints and type attributes of a UniformRange are required.')
     elif dict_range['type'] == 'VectorRange':
         if 'id' not in dict_range or 'values' not in dict_range:
-            print('The id and values attributes of a range are required.')
-            return False	
-        sed_range = repeatedTask.createVectorRange()
-        if not operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setValues(dict_range['values']), 'Set the values attribute of a range'):
-            return False
+            raise ValueError('The id and values attributes of a VectorRange are required.')
     elif dict_range['type'] == 'DataRange':
         if 'id' not in dict_range or 'sourceReference' not in dict_range:
-            print('The id and sourceReference attributes of a range are required.')
-            return False
-        sed_range = repeatedTask.createDataRange()
-        if not operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range'):
-            return False
-        if not operation_flag_check(sed_range.setSourceReference(dict_range['sourceReference']), 'Set the sourceReference attribute of a range'):
-            return False
+            raise ValueError('The id and sourceReference attributes of a DataRange are required.')
     else:
-        print('The range is not defined.')
-        return False
+        raise ValueError('The range is not defined.')
+    try:
+        if dict_range['type'] == 'UniformRange':
+            sed_range = repeatedTask.createUniformRange()
+            _operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range')
+            _operation_flag_check(sed_range.setStart(dict_range['start']), 'Set the start attribute of a range')
+            _operation_flag_check(sed_range.setEnd(dict_range['end']), 'Set the end attribute of a range')
+            _operation_flag_check(sed_range.setNumberOfPoints(dict_range['numberOfPoints']), 'Set the numberOfPoints attribute of a range')
+            _operation_flag_check(sed_range.setType(dict_range['type']), 'Set the type attribute of a range')
+        elif dict_range['type'] == 'VectorRange':
+            sed_range = repeatedTask.createVectorRange()
+            _operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range')
+            _operation_flag_check(sed_range.setValues(dict_range['values']), 'Set the values attribute of a range')
+        elif dict_range['type'] == 'DataRange':
+            sed_range = repeatedTask.createDataRange()
+            _operation_flag_check(sed_range.setId(dict_range['id']), 'Set the id attribute of a range')
+            _operation_flag_check(sed_range.setSourceReference(dict_range['sourceReference']), 'Set the sourceReference attribute of a range')
+    except ValueError as e:
+        raise
     return True
 
 def _get_dict_range(sed_range):
@@ -1147,6 +1193,11 @@ def _get_dict_range(sed_range):
     ----------
     sed_range: SedRange
         An instance of SedRange.
+    
+    Raises
+    ------
+    ValueError
+        If the range is not defined.
 
     Notes
     -----
@@ -1155,14 +1206,13 @@ def _get_dict_range(sed_range):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format could be one of the following:
         UniformRange: {'id':'range1','type':'UniformRange', 'start':0.0,'end':10.0,
         'numberOfPoints':100,'type':'linear or log'}
         VectorRange: {'id':'range1','type':'VectorRange','values':[0.0,0.1,0.2,0.3,0.4,0.5]}
         DataRange: {'id':'range1','type':'DataRange','sourceReference':'data_source_1'} 
         to construct a range by reference to external data
-        If the type of the range is not supported, return False.
     """
     dict_range = {}
     dict_range['id'] = sed_range.getId()
@@ -1177,8 +1227,7 @@ def _get_dict_range(sed_range):
     elif sed_range.isSedDataRange():
         dict_range['sourceReference'] = sed_range.getSourceReference()
     else:
-        print('The range is not defined.')
-        return False
+        raise ValueError('The range is not defined.')
     return dict_range
 
 def _setChange4Task(task,dict_setValue):
@@ -1193,6 +1242,12 @@ def _setChange4Task(task,dict_setValue):
         The dictionary format: {'target':target_component_variable,'modelReference':'model1',
         'symbol':None,'range':None,'math':None}
         The target and modelReference attributes of a set value are required.
+    
+    Raises
+    ------
+    ValueError
+        If the target and modelReference attributes of a set value are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -1205,22 +1260,19 @@ def _setChange4Task(task,dict_setValue):
         Whether the change (SedSetValue) is set successfully.
     """
     if 'target' not in dict_setValue or 'modelReference' not in dict_setValue:
-        print('The target and modelReference attributes of a set value are required.')
-        return False
+       raise ValueError('The target and modelReference attributes of a set value are required.')
     setValue = task.createTaskChange()
-    if not operation_flag_check(setValue.setTarget(dict_setValue['target']), 'Set the target attribute of a set value'):
-        return False
-    if not operation_flag_check(setValue.setModelReference(dict_setValue['modelReference']), 'Set the modelReference attribute of a set value'):
-        return False
-    if 'symbol' in dict_setValue:
-        if not operation_flag_check(setValue.setSymbol(dict_setValue['symbol']), 'Set the symbol attribute of a set value'):
-            return False
-    if 'range' in dict_setValue:
-        if not operation_flag_check(setValue.setRange(dict_setValue['range']), 'Set the range attribute of a set value'):
-            return False
-    if 'math' in dict_setValue:
-        if not operation_flag_check(setValue.setMath(libsedml.parseL3Formula(dict_setValue['math'])), 'Set the math attribute of a set value'):
-            return False
+    try:
+        _operation_flag_check(setValue.setTarget(dict_setValue['target']), 'Set the target attribute of a set value')
+        _operation_flag_check(setValue.setModelReference(dict_setValue['modelReference']), 'Set the modelReference attribute of a set value')
+        if 'symbol' in dict_setValue:
+            _operation_flag_check(setValue.setSymbol(dict_setValue['symbol']), 'Set the symbol attribute of a set value')
+        if 'range' in dict_setValue:
+            _operation_flag_check(setValue.setRange(dict_setValue['range']), 'Set the range attribute of a set value')
+        if 'math' in dict_setValue:
+            _operation_flag_check(setValue.setMath(libsedml.parseL3Formula(dict_setValue['math'])), 'Set the math attribute of a set value')
+    except ValueError as e:
+        raise
     return True
 
 def _get_dict_setValue(setValue):
@@ -1262,6 +1314,12 @@ def _setSubTask(subTask,dict_subTask):
     dict_subTask: dict
         The dictionary format: {'order':1,'task':'task1','listOfChanges':[dict_setValue]}
         The order and task attributes of a sub task are required.
+    
+    Raises
+    ------
+    ValueError
+        If the order and task attributes of a sub task are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -1270,21 +1328,20 @@ def _setSubTask(subTask,dict_subTask):
 
     Returns
     -------
-    SedSubTask or bool
-        If the subtask is set successfully, return the instance of SedSubTask; otherwise, return False
+    SedSubTask
+        An instance of SedSubTask.
     """
     if 'order' not in dict_subTask or 'task' not in dict_subTask:
-        print('The order and task attributes of a sub task are required.')
-        return False
-    if not operation_flag_check(subTask.setOrder(dict_subTask['order']), 'Set the order attribute of a sub task'):
-        return False
-    if not operation_flag_check(subTask.setTask(dict_subTask['task']), 'Set the task attribute of a sub task'):
-        return False
-    if 'listOfChanges' in dict_subTask:
-        for dict_setValue in dict_subTask['listOfChanges']:
-            if not _setChange4Task(subTask,dict_setValue):
-                return False
-    return subTask	
+       raise ValueError('The order and task attributes of a sub task are required.')
+    try:
+        _operation_flag_check(subTask.setOrder(dict_subTask['order']), 'Set the order attribute of a sub task')
+        _operation_flag_check(subTask.setTask(dict_subTask['task']), 'Set the task attribute of a sub task')
+        if 'listOfChanges' in dict_subTask:
+            for dict_setValue in dict_subTask['listOfChanges']:
+                _setChange4Task(subTask,dict_setValue)
+    except ValueError as e:
+        raise
+    return subTask
 
 def _get_dict_subTask(subTask):
     """
@@ -1334,38 +1391,38 @@ def create_repeatedTask(doc,dict_repeatedTask):
         concatenate: optional but strongly suggest to be defined,specifies whether the output of the subtasks
         should be appended to the results of the previous outputs (True), 
         or whether it should be added in parallel, as a new dimension of the output (False).
+    
+    Raises
+    ------
+    ValueError
+        If the id, resetModel, range, concatenate, listOfRanges and listOfSubTasks attributes of a repeated task are not set.
+        If any operation returns an error.
 
     Returns
     -------
-    bool or SedRepeatedTask
-        If the repeated task is created successfully, return the instance of SedRepeatedTask; otherwise, return False
-        
+    SedRepeatedTask
+        An instance of SedRepeatedTask.       
     """
 
     if 'id' not in dict_repeatedTask or 'resetModel' not in dict_repeatedTask or 'range' not in dict_repeatedTask or 'concatenate' not in dict_repeatedTask or 'listOfRanges' not in dict_repeatedTask or 'listOfSubTasks' not in dict_repeatedTask:
-        print('The id, resetModel, range, concatenate, listOfRanges and listOfSubTasks attributes of a repeated task are required.')
-        return False
+       raise ValueError('The id, resetModel, range, concatenate, listOfRanges and listOfSubTasks attributes of a repeated task are required.')
     repeatedTask=doc.createRepeatedTask()
-    if not operation_flag_check(repeatedTask.setId(dict_repeatedTask['id']), 'Set the id attribute of a repeated task'):
-        return False
-    if not operation_flag_check(repeatedTask.setResetModel(dict_repeatedTask['resetModel']), 'Set the resetModel attribute of a repeated task'):
-        return False
-    if not operation_flag_check(repeatedTask.setRangeId(dict_repeatedTask['range']), 'Set the range attribute of a repeated task'):
-        return False
-    if not operation_flag_check(repeatedTask.setConcatenate(dict_repeatedTask['concatenate']), 'Set the concatenate attribute of a repeated task'):
-        return False
-    if 'listOfChanges' in dict_repeatedTask:
-        for dict_setValue in dict_repeatedTask['listOfChanges']:
-            if not _setChange4Task(repeatedTask,dict_setValue):
-                return False
-    for dict_range in dict_repeatedTask['listOfRanges']:
-        if not _setRange(repeatedTask,dict_range):
-            return False
-    for dict_subTask in dict_repeatedTask['listOfSubTasks']:
-        subTask = repeatedTask.createSubTask()
-        if not _setSubTask(subTask,dict_subTask):
-            return False    
-    return repeatedTask       
+    try:
+        _operation_flag_check(repeatedTask.setId(dict_repeatedTask['id']), 'Set the id attribute of a repeated task')
+        _operation_flag_check(repeatedTask.setResetModel(dict_repeatedTask['resetModel']), 'Set the resetModel attribute of a repeated task')
+        _operation_flag_check(repeatedTask.setRangeId(dict_repeatedTask['range']), 'Set the range attribute of a repeated task')
+        _operation_flag_check(repeatedTask.setConcatenate(dict_repeatedTask['concatenate']), 'Set the concatenate attribute of a repeated task')
+        if 'listOfChanges' in dict_repeatedTask:
+            for dict_setValue in dict_repeatedTask['listOfChanges']:
+                _setChange4Task(repeatedTask,dict_setValue)
+        for dict_range in dict_repeatedTask['listOfRanges']:
+            _setRange(repeatedTask,dict_range)
+        for dict_subTask in dict_repeatedTask['listOfSubTasks']:
+            subTask = repeatedTask.createSubTask()
+            _setSubTask(subTask,dict_subTask)
+    except ValueError as e:
+        raise
+    return repeatedTask    
 
 def get_dict_repeatedTask(repeatedTask):
     """
@@ -1375,6 +1432,11 @@ def get_dict_repeatedTask(repeatedTask):
     ----------
     repeatedTask: SedRepeatedTask
         An instance of SedRepeatedTask.
+    
+    Raises
+    ------
+    ValueError.
+        If _get_dict_range(sed_range) failed.
 
     Notes
     -----
@@ -1382,13 +1444,11 @@ def get_dict_repeatedTask(repeatedTask):
 
     Returns
     -------
-    dict or bool
+    dict 
         The dictionary format: 
         {'id':'repeatedTask1','type':'RepeatedTask','resetModel':bool,'range':'range1','concatenate':bool,
         'listOfChanges':[dict_setValue],'listOfRanges':[dict_uniformRange,dict_vectorRange,dict_dataRange], 'listOfSubTasks':[dict_subTask]}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
-
     """
     dict_repeatedTask = {}
     dict_repeatedTask['id'] = repeatedTask.getId()
@@ -1403,9 +1463,10 @@ def get_dict_repeatedTask(repeatedTask):
             dict_repeatedTask['listOfChanges'].append(_get_dict_setValue(taskChange))
     dict_repeatedTask['listOfRanges'] = []
     for sedRange in repeatedTask.getListOfRanges():
-        dict_sedRange = _get_dict_range(sedRange)
-        if not dict_sedRange:
-            return False
+        try:
+            dict_sedRange = _get_dict_range(sedRange)
+        except ValueError as e:
+            raise
         dict_repeatedTask['listOfRanges'].append(dict_sedRange)
     dict_repeatedTask['listOfSubTasks'] = []
     for subTask in repeatedTask.getListOfSubTasks():
@@ -1433,6 +1494,13 @@ def _setAdjustableParameter(task_pe,dict_adjustableParameter):
         The modelReference is not required in the SED-ML L1V4.
         The modelReference is required in the current version of libSEDML.
     
+    Raises
+    ------
+    ValueError
+        If the id, modelReference, target and bounds attributes of an adjustable parameter are not set.
+        If the upperBound, lowerBound and scale attributes of bounds are not set.
+        If any operation returns an error.
+
     Side effects
     ------------
     task_pe: SedParameterEstimationTask
@@ -1445,32 +1513,25 @@ def _setAdjustableParameter(task_pe,dict_adjustableParameter):
     """
 
     if 'id' not in dict_adjustableParameter or 'modelReference' not in dict_adjustableParameter or 'target' not in dict_adjustableParameter or 'bounds' not in dict_adjustableParameter:
-        print('The id, modelReference, target and bounds attributes of an adjustable parameter are required.')
-        return False
-    p=task_pe.createAdjustableParameter()
-    if not operation_flag_check(p.setId(dict_adjustableParameter['id']), 'Set the id attribute of an adjustable parameter'):
-        return False
-    if not operation_flag_check(p.setModelReference(dict_adjustableParameter['modelReference']), 'Set the modelReference attribute of an adjustable parameter'):
-        return False
-    if not operation_flag_check(p.setTarget(dict_adjustableParameter['target']), 'Set the target attribute of an adjustable parameter'):
-        return False
-    if 'initialValue' in dict_adjustableParameter:
-        if not operation_flag_check(p.setInitialValue(dict_adjustableParameter['initialValue']), 'Set the initialValue attribute of an adjustable parameter'):
-            return False
-    bounds=p.createBounds()
+        raise ValueError('The id, modelReference, target and bounds attributes of an adjustable parameter are required.')
     if 'upperBound' not in dict_adjustableParameter['bounds'] or 'lowerBound' not in dict_adjustableParameter['bounds'] or 'scale' not in dict_adjustableParameter['bounds']:
-        print('The upperBound, lowerBound and scale attributes of bounds are required.')
-        return False
-    if not operation_flag_check(bounds.setLowerBound(dict_adjustableParameter['bounds']['lowerBound']), 'Set the lowerBound attribute of an adjustable parameter'):
-        return False
-    if not operation_flag_check(bounds.setUpperBound(dict_adjustableParameter['bounds']['upperBound']), 'Set the upperBound attribute of an adjustable parameter'):
-        return False
-    if not operation_flag_check(bounds.setScale(dict_adjustableParameter['bounds']['scale']), 'Set the scale attribute of an adjustable parameter'):
-        return False
-    if 'listOfExperimentReferences' in dict_adjustableParameter:
-        for dict_experimentReference in dict_adjustableParameter['listOfExperimentReferences']:
-            if not operation_flag_check(p.createExperimentReference().setExperimentId(dict_experimentReference), 'Set the experimentReference attribute of an adjustable parameter'):
-                return False
+        raise ValueError('The upperBound, lowerBound and scale attributes of bounds are required.')
+    p=task_pe.createAdjustableParameter()
+    try:
+        _operation_flag_check(p.setId(dict_adjustableParameter['id']), 'Set the id attribute of an adjustable parameter')
+        _operation_flag_check(p.setModelReference(dict_adjustableParameter['modelReference']), 'Set the modelReference attribute of an adjustable parameter')
+        _operation_flag_check(p.setTarget(dict_adjustableParameter['target']), 'Set the target attribute of an adjustable parameter')
+        if 'initialValue' in dict_adjustableParameter:
+            _operation_flag_check(p.setInitialValue(dict_adjustableParameter['initialValue']), 'Set the initialValue attribute of an adjustable parameter')
+        bounds=p.createBounds()
+        _operation_flag_check(bounds.setLowerBound(dict_adjustableParameter['bounds']['lowerBound']), 'Set the lowerBound attribute of an adjustable parameter')
+        _operation_flag_check(bounds.setUpperBound(dict_adjustableParameter['bounds']['upperBound']), 'Set the upperBound attribute of an adjustable parameter')
+        _operation_flag_check(bounds.setScale(dict_adjustableParameter['bounds']['scale']), 'Set the scale attribute of an adjustable parameter')
+        if 'listOfExperimentReferences' in dict_adjustableParameter:
+            for dict_experimentReference in dict_adjustableParameter['listOfExperimentReferences']:
+                _operation_flag_check(p.createExperimentReference().setExperimentId(dict_experimentReference), 'Set the experimentReference attribute of an adjustable parameter')
+    except ValueError as e:
+        raise
     return True
 
 def _get_dict_adjustableParameter(p):
@@ -1538,6 +1599,14 @@ def _setFitExperiment(task_pe,dict_fitExperiment):
         target is a pointer to the simulated values;
         The weight or pointWeight attributes are used for observable only.
         The id, type and algorithm attributes of a fit experiment are required.
+    
+    Raises
+    ------
+    ValueError
+        If the id, type, algorithm and listOfFitMappings attributes of a fit experiment are not set.
+        If both weight and pointWeight attributes of a fit mapping (observable) are set.
+        If the weight or pointWeight attributes of a fit mapping (observable) are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -1551,38 +1620,35 @@ def _setFitExperiment(task_pe,dict_fitExperiment):
     """
 
     if 'id' not in dict_fitExperiment or 'type' not in dict_fitExperiment or 'algorithm' not in dict_fitExperiment or 'listOfFitMappings' not in dict_fitExperiment:
-        print('The id, type, algorithm and listOfFitMappings attributes of a fit experiment are required.')
-        return False
+        raise ValueError('The id, type, algorithm and listOfFitMappings attributes of a fit experiment are required.')
     fe=task_pe.createFitExperiment()
-    if not operation_flag_check(fe.setId(dict_fitExperiment['id']), 'Set the id attribute of a fit experiment'):
-        return False
-    if not operation_flag_check(fe.setType(dict_fitExperiment['type']), 'Set the type attribute of a fit experiment'):
-        return False
-    alg=fe.createAlgorithm()
-    if not _setAlgorithm(alg, dict_fitExperiment['algorithm']):
-        return False
-    for dict_fitMapping in dict_fitExperiment['listOfFitMappings']:
-        fitMapping=fe.createFitMapping()
-        if not operation_flag_check(fitMapping.setType(dict_fitMapping['type']), 'Set the type attribute of a fit mapping'):
-            return False
-        if not operation_flag_check(fitMapping.setDataSource(dict_fitMapping['dataSource']), 'Set the dataSource attribute of a fit mapping'):
-            return False
-        if not operation_flag_check(fitMapping.setTarget(dict_fitMapping['target']), 'Set the target attribute of a fit mapping'):
-            return False
-        if dict_fitMapping['type']=='observable':
-            if 'weight' in dict_fitMapping:
-                if dict_fitMapping['weight'] is not None:
-                    if not operation_flag_check(fitMapping.setWeight(dict_fitMapping['weight']), 'Set the weight attribute of a fit mapping'):
-                        return False
-            elif 'pointWeight' in dict_fitMapping:
-                if dict_fitMapping['pointWeight'] is not None:
-                    if not operation_flag_check(fitMapping.setPointWeight(dict_fitMapping['pointWeight']), 'Set the pointWeight attribute of a fit mapping'):
-                        return False
-            else:
-                print('The weight or pointWeight attributes of a fit mapping (observable) are required.')
-                return False
-    return True
+    try:
+        _operation_flag_check(fe.setId(dict_fitExperiment['id']), 'Set the id attribute of a fit experiment')
+        _operation_flag_check(fe.setType(dict_fitExperiment['type']), 'Set the type attribute of a fit experiment')
+        alg=fe.createAlgorithm()
+        _setAlgorithm(alg, dict_fitExperiment['algorithm'])
+    except ValueError as e:
+        raise
 
+    for dict_fitMapping in dict_fitExperiment['listOfFitMappings']:
+        if dict_fitMapping['type']=='observable':
+            if 'weight' in dict_fitMapping and 'pointWeight' in dict_fitMapping:
+                raise ValueError('The weight and pointWeight attributes of a fit mapping (observable) are mutually exclusive.')
+            if 'weight' not in dict_fitMapping and 'pointWeight' not in dict_fitMapping:
+                raise ValueError('The weight or pointWeight attributes of a fit mapping (observable) are required.')
+        fitMapping=fe.createFitMapping()
+        try:
+            _operation_flag_check(fitMapping.setType(dict_fitMapping['type']), 'Set the type attribute of a fit mapping')
+            _operation_flag_check(fitMapping.setDataSource(dict_fitMapping['dataSource']), 'Set the dataSource attribute of a fit mapping')
+            _operation_flag_check(fitMapping.setTarget(dict_fitMapping['target']), 'Set the target attribute of a fit mapping')
+            if 'weight' in dict_fitMapping and dict_fitMapping['weight'] is not None:
+                _operation_flag_check(fitMapping.setWeight(dict_fitMapping['weight']), 'Set the weight attribute of a fit mapping')
+            if 'pointWeight' in dict_fitMapping and dict_fitMapping['pointWeight'] is not None:
+                _operation_flag_check(fitMapping.setPointWeight(dict_fitMapping['pointWeight']), 'Set the pointWeight attribute of a fit mapping')
+        except ValueError as e:
+            raise
+    return True
+   
 def _get_dict_fitExperiment(fe):
     """
     Get the information of a fit experiment
@@ -1591,22 +1657,29 @@ def _get_dict_fitExperiment(fe):
     ----------
     fe: SedFitExperiment
         An instance of SedFitExperiment.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_algorithm(sed_algorithm) failed.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         {'id':'fitExperimen1','type':'timeCourse or steadyState or invalid ExperimentType value',
         'algorithm':dict_algorithm,'listOfFitMappings':[dict_fitMapping]}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
 
     dict_fitExperiment = {}
     dict_fitExperiment['id'] = fe.getId()
     dict_fitExperiment['type'] = fe.getTypeAsString()
     sed_algorithm = fe.getAlgorithm()
-    dict_fitExperiment['algorithm'] = get_dict_algorithm(sed_algorithm)    
+    try:
+        dict_fitExperiment['algorithm'] = get_dict_algorithm(sed_algorithm)
+    except ValueError as e:
+        raise    
     dict_fitExperiment['listOfFitMappings'] = []
     for fitMapping in fe.getListOfFitMappings():
         dict_fitMapping = {}
@@ -1619,8 +1692,7 @@ def _get_dict_fitExperiment(fe):
             elif fitMapping.isSetPointWeight():
                 dict_fitMapping['pointWeight'] = fitMapping.getPointWeight()
             else:
-                print('The weight or pointWeight attributes of a fit mapping (observable) are required.')
-                return False
+                raise ValueError('The weight or pointWeight attributes of a fit mapping (observable) are required.')
         dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping)
     return dict_fitExperiment
 
@@ -1641,6 +1713,13 @@ def create_parameterEstimationTask(doc,dict_parameterEstimationTask):
         but the current libSEDML does not support it.
         Instead, the modelReference attribute is required in the adjustableParameter.
     
+    Raises
+    ------
+    ValueError
+        If the id, algorithm, objective, listOfAdjustableParameters and listOfFitExperiments attributes of a parameter estimation task are not set.
+        If the objective type is not leastSquare.
+        If any operation returns an error.
+
     Side effects
     ------------
     doc: SedDocument
@@ -1648,31 +1727,27 @@ def create_parameterEstimationTask(doc,dict_parameterEstimationTask):
 
     Returns:
     --------
-    bool or SedParameterEstimationTask
-        If the parameter estimation task is created successfully, return the instance of SedParameterEstimationTask; otherwise, return False  
+    SedParameterEstimationTask
+        An instance of SedParameterEstimationTask.  
     """
 
     if 'id' not in dict_parameterEstimationTask or 'algorithm' not in dict_parameterEstimationTask or 'objective' not in dict_parameterEstimationTask or 'listOfAdjustableParameters' not in dict_parameterEstimationTask or 'listOfFitExperiments' not in dict_parameterEstimationTask:
-        print('The id, algorithm, objective, listOfAdjustableParameters and listOfFitExperiments attributes of a parameter estimation task are required.')
-        return False
+        raise ValueError('The id, algorithm, objective, listOfAdjustableParameters and listOfFitExperiments attributes of a parameter estimation task are required.')
+    if dict_parameterEstimationTask['objective']['type'] != 'leastSquare':
+        raise ValueError('In Level 1 Version 4, there is only a single Objective option: theLeastSquareObjectiveFunction (called \leastSquareObjectiveFunction" instead of \objective")')
     task_pe = doc.createParameterEstimationTask()
-    if not operation_flag_check(task_pe.setId(dict_parameterEstimationTask['id']), 'Set the id attribute of a parameter estimation task'):
-        return False
-
-    alg = task_pe.createAlgorithm()
-    if not _setAlgorithm(alg, dict_parameterEstimationTask['algorithm']):
-        return False
-    if dict_parameterEstimationTask['objective']['type'] == 'leastSquare':
+    
+    try:
+        _operation_flag_check(task_pe.setId(dict_parameterEstimationTask['id']), 'Set the id attribute of a parameter estimation task')
+        alg = task_pe.createAlgorithm()
+        _setAlgorithm(alg, dict_parameterEstimationTask['algorithm'])
         task_pe.createLeastSquareObjectiveFunction()
-    else:
-        print('In Level 1 Version 4, there is only a single Objective option: theLeastSquareObjectiveFunction (called \leastSquareObjectiveFunction" instead of \objective")')
-        return None
-    for dict_adjustableParameter in dict_parameterEstimationTask['listOfAdjustableParameters']:
-        if not _setAdjustableParameter(task_pe,dict_adjustableParameter):
-            return False
-    for dict_fitExperiment in dict_parameterEstimationTask['listOfFitExperiments']:
-        if not _setFitExperiment(task_pe,dict_fitExperiment):
-            return False
+        for dict_adjustableParameter in dict_parameterEstimationTask['listOfAdjustableParameters']:
+            _setAdjustableParameter(task_pe,dict_adjustableParameter)
+        for dict_fitExperiment in dict_parameterEstimationTask['listOfFitExperiments']:
+            _setFitExperiment(task_pe,dict_fitExperiment)
+    except ValueError as e:
+        raise
     return task_pe
 
 def get_dict_parameterEstimationTask(task_pe):
@@ -1683,6 +1758,12 @@ def get_dict_parameterEstimationTask(task_pe):
     ----------
     task_pe: SedParameterEstimationTask
         An instance of SedParameterEstimationTask.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_algorithm(opt_algorithm) failed.
+        If get_dict_fitExperiment(fitExperiment) failed.
 
     Notes
     -----
@@ -1690,31 +1771,31 @@ def get_dict_parameterEstimationTask(task_pe):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format: 
         {'id':'parameterEstimationTask1','type':'ParameterEstimationTask','algorithm':dict_algorithm,'objective':{'type':'leastSquare'},
         'listOfAdjustableParameters':[dict_adjustableParameter],'listOfFitExperiments':[dict_fitExperiment]}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
     dict_parameterEstimationTask = {}
     dict_parameterEstimationTask['id'] = task_pe.getId()
     dict_parameterEstimationTask['type']=libsedml.SedTypeCode_toString(task_pe.getTypeCode())
     # dict_parameterEstimationTask['modelReference'] = task_pe.getModelReference()
     opt_algorithm = task_pe.getAlgorithm()
-    dict_algorithm = get_dict_algorithm(opt_algorithm)
-    if not dict_algorithm:
-        return False
-    dict_parameterEstimationTask['algorithm'] = dict_algorithm
+    try:
+        dict_parameterEstimationTask['algorithm'] = get_dict_algorithm(opt_algorithm)
+    except ValueError as e:
+        raise
     dict_parameterEstimationTask['objective'] = 'leastSquare' 
     dict_parameterEstimationTask['listOfAdjustableParameters'] = []
     for adjustableParameter in task_pe.getListOfAdjustableParameters():
         dict_parameterEstimationTask['listOfAdjustableParameters'].append(_get_dict_adjustableParameter(adjustableParameter))
     dict_parameterEstimationTask['listOfFitExperiments'] = []
     for fitExperiment in task_pe.getListOfFitExperiments():
-        dict_fitExperiment=_get_dict_fitExperiment(fitExperiment)
-        if not dict_fitExperiment:
-            return False
+        try: 
+            dict_fitExperiment = _get_dict_fitExperiment(fitExperiment)
+        except ValueError as e:
+            raise
         dict_parameterEstimationTask['listOfFitExperiments'].append(dict_fitExperiment)
     return dict_parameterEstimationTask
 
@@ -1732,6 +1813,12 @@ def create_abstractTask(doc,dict_Task):
         if the type is Task: dict_task
         if the type is ParameterEstimationTask: dict_parameterEstimationTask
     
+    Raises
+    ------
+    ValueError
+        If the typeCode is not defined.
+        If any operation returns an error.
+
     Side effects
     ------------
     doc: SedDocument
@@ -1739,19 +1826,28 @@ def create_abstractTask(doc,dict_Task):
 
     Returns:
     --------
-    bool or SedAbstractTask
-        If the abstract task is created successfully, return the instance of SedAbstractTask; otherwise, return False
+    SedAbstractTask
+        An instance of SedAbstractTask.
     """       
-        
+   
     if dict_Task['type'] == 'RepeatedTask':
-        return create_repeatedTask(doc,dict_Task)
+        try:
+            task=create_repeatedTask(doc,dict_Task)
+        except ValueError as e:
+            raise
     elif dict_Task['type'] == 'Task':
-        return create_task(doc,dict_Task)
+        try:
+            task=create_task(doc,dict_Task)
+        except ValueError as e:
+            raise
     elif dict_Task['type'] == 'ParameterEstimationTask'	:
-        return create_parameterEstimationTask(doc,dict_Task)
+        try:
+            task=create_parameterEstimationTask(doc,dict_Task)
+        except ValueError as e:
+            raise
     else:
-        print('The typeCode is not defined.')
-        return False
+        raise ValueError('The typeCode is not defined.')
+    return task
 
 def get_dict_abstractTask(task):
     """
@@ -1761,32 +1857,42 @@ def get_dict_abstractTask(task):
     ----------
     task: SedAbstractTask
         An instance of SedAbstractTask.
-
+    
+    Raises
+    ------
+    ValueError
+        If the type of the abstract task is not supported.
+        If get_dict_repeatedTask(task) failed.
+        If get_dict_parameterEstimationTask(task) failed.
     Notes
     -----
     Assume the abstract task has been created successfully.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         if the type is RepeatedTask: dict_repeatedTask
         if the type is Task: dict_task
         if the type is ParameterEstimationTask: dict_parameterEstimationTask
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
-        If the type of the abstract task is not supported, return False.
     """
 
     if task.isSedRepeatedTask():
-        return get_dict_repeatedTask(task)
+        try:
+            dict_task = get_dict_repeatedTask(task)
+        except ValueError as e:
+            raise
     elif task.isSedTask():
-        return get_dict_task(task)
+        dict_task = get_dict_task(task)
     elif task.isSedParameterEstimationTask():
-        return get_dict_parameterEstimationTask(task)
+        try:
+            dict_task = get_dict_parameterEstimationTask(task)
+        except ValueError as e:
+            raise
     else:
-        print('The typeCode is not defined.')
-        return False
+       raise ValueError('The type of the abstract task is not supported.')
+    return dict_task
 
 def _setVariable(sedVariable,dict_variable):
     """
@@ -1820,6 +1926,13 @@ def _setVariable(sedVariable,dict_variable):
         * dimensionTarget is used when the Variable references an external data source.
         The NuMLIdRef must reference a dimension of the referenced data.
    
+    Raises
+    ------
+    ValueError
+        If the id attribute of a variable is not set.
+        If the dimensionTerm attribute is defined but the listOfAppliedDimensions attribute of a variable is empty.
+        If any operation returns an error.
+
     Side effects
     ------------
     sedVariable: SedVariable
@@ -1830,54 +1943,42 @@ def _setVariable(sedVariable,dict_variable):
     bool
         Whether the variable is set successfully.
     """
-
-    if not operation_flag_check(sedVariable.setId(dict_variable['id']), 'Set the id attribute of a variable'):
-        return False
-    if 'name' in dict_variable:
-        if not operation_flag_check(sedVariable.setName(dict_variable['name']), 'Set the name attribute of a variable'):
-            return False
-    if 'target' in dict_variable:
-        if not operation_flag_check(sedVariable.setTarget(dict_variable['target']), 'Set the target attribute of a variable'):
-            return False
-    if 'symbol' in dict_variable:
-        if not operation_flag_check(sedVariable.setSymbol(dict_variable['symbol']), 'Set the symbol attribute of a variable'):
-            return False
-    if 'target2' in dict_variable:
-        if not operation_flag_check(sedVariable.setTarget2(dict_variable['target2']), 'Set the target2 attribute of a variable'):
-            return False
-    if 'symbol2' in dict_variable:
-        if not operation_flag_check(sedVariable.setSymbol2(dict_variable['symbol2']), 'Set the symbol2 attribute of a variable'):
-            return False
-    if 'term' in dict_variable:
-        if not operation_flag_check(sedVariable.setTerm(dict_variable['term']), 'Set the term attribute of a variable'):
-            return False
-    if 'modelReference' in dict_variable:
-        if not operation_flag_check(sedVariable.setModelReference(dict_variable['modelReference']), 'Set the modelReference attribute of a variable'):
-            return False
-    if 'taskReference' in dict_variable:
-        if not operation_flag_check(sedVariable.setTaskReference(dict_variable['taskReference']), 'Set the taskReference attribute of a variable'):
-            return False
+    if 'id' not in dict_variable:
+        raise ValueError('The id attribute of a variable is required.')
     if 'dimensionTerm' in dict_variable:
-        if not operation_flag_check(sedVariable.setDimensionTerm(dict_variable['dimensionTerm']), 'Set the dimensionTerm attribute of a variable'):
-            return False
-        elif 'listOfAppliedDimensions' in dict_variable and dict_variable['listOfAppliedDimensions']:
+        if 'listOfAppliedDimensions' not in dict_variable or len(dict_variable['listOfAppliedDimensions'])==0:
+            raise ValueError('The dimensionTerm attribute is defined but the listOfAppliedDimensions attribute of a variable is empty.')
+    try:
+        _operation_flag_check(sedVariable.setId(dict_variable['id']), 'Set the id attribute of a variable')
+        if 'name' in dict_variable:
+            _operation_flag_check(sedVariable.setName(dict_variable['name']), 'Set the name attribute of a variable')
+        if 'target' in dict_variable:
+            _operation_flag_check(sedVariable.setTarget(dict_variable['target']), 'Set the target attribute of a variable')
+        if 'symbol' in dict_variable:
+            _operation_flag_check(sedVariable.setSymbol(dict_variable['symbol']), 'Set the symbol attribute of a variable')
+        if 'target2' in dict_variable:
+            _operation_flag_check(sedVariable.setTarget2(dict_variable['target2']), 'Set the target2 attribute of a variable')
+        if 'symbol2' in dict_variable:
+            _operation_flag_check(sedVariable.setSymbol2(dict_variable['symbol2']), 'Set the symbol2 attribute of a variable')
+        if 'term' in dict_variable:
+            _operation_flag_check(sedVariable.setTerm(dict_variable['term']), 'Set the term attribute of a variable')
+        if 'modelReference' in dict_variable:
+            _operation_flag_check(sedVariable.setModelReference(dict_variable['modelReference']), 'Set the modelReference attribute of a variable')
+        if 'taskReference' in dict_variable:
+            _operation_flag_check(sedVariable.setTaskReference(dict_variable['taskReference']), 'Set the taskReference attribute of a variable')
+        if 'dimensionTerm' in dict_variable:
+            _operation_flag_check(sedVariable.setDimensionTerm(dict_variable['dimensionTerm']), 'Set the dimensionTerm attribute of a variable')
             for dict_appliedDimension in dict_variable['listOfAppliedDimensions']:
                 appliedDimension=sedVariable.createAppliedDimension()
                 if 'target' in dict_appliedDimension:
-                    if not operation_flag_check(appliedDimension.setTarget(dict_appliedDimension['target']), 'Set the target attribute of an applied dimension'):
-                        return False
+                    _operation_flag_check(appliedDimension.setTarget(dict_appliedDimension['target']), 'Set the target attribute of an applied dimension')
                 elif 'dimensionTarget' in dict_appliedDimension:
-                    if not operation_flag_check(appliedDimension.setDimensionTarget(dict_appliedDimension['dimensionTarget']), 'Set the dimensionTarget attribute of an applied dimension'):
-                        return False
-                else:
-                    print('The dimensionTerm attribute is defined but the listOfAppliedDimensions attribute of a variable is empty.')
-                    return False
-        else:
-            print('The dimensionTerm attribute is defined but the listOfAppliedDimensions attribute of a variable is empty.')
-            return False  
-    if 'metaid' in dict_variable:
-        if not operation_flag_check(sedVariable.setMetaId(dict_variable['metaid']), 'Set the metaid attribute of a variable'):
-            return False       
+                    _operation_flag_check(appliedDimension.setDimensionTarget(dict_appliedDimension['dimensionTarget']), 'Set the dimensionTarget attribute of an applied dimension')
+        if 'metaid' in dict_variable:
+            _operation_flag_check(sedVariable.setMetaId(dict_variable['metaid']), 'Set the metaid attribute of a variable')       
+    except ValueError as e:
+        raise
+
     return True
 
 def _get_dict_variable(sedVariable):
@@ -1888,22 +1989,25 @@ def _get_dict_variable(sedVariable):
     ----------
     sedVariable: SedVariable
         An instance of SedVariable.
+    
+    Raises
+    ------
+    ValueError
+        If the id attribute of a variable is required.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         {'id':'variable1','name':None,'target':None,'symbol':None,'target2':None,'symbol2':None,
         'term':None,'modelReference':None,'taskReference':None,
         'dimensionTerm':None,'listOfAppliedDimensions':[dict_appliedDimension],'metaid':None
         }
-        Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
-                              
+        Only the attributes that are set will be returned.                              
     """
+
     if  not sedVariable.isSetId ():
-        print('The id attribute of a variable is required.')
-        return False
+        raise ValueError('The id attribute of a variable is required.')
     dict_variable = {}
     dict_variable['id'] = sedVariable.getId()
     if sedVariable.isSetName():
@@ -1950,6 +2054,13 @@ def create_dataGenerator(doc,dict_dataGenerator):
         dict_parameter format: {'id':'param1','name':None,'value':float,'metaid':None}
         The id, and math attributes of a data generator are required.
 
+    Raises
+    ------
+    ValueError
+        If the id and math attributes of a data generator are not set.
+        If the id and value attributes of a parameter are not set.
+        If any operation returns an error.
+
     Side effects
     ------------
     doc: SedDocument
@@ -1957,43 +2068,39 @@ def create_dataGenerator(doc,dict_dataGenerator):
 
     Returns
     -------
-    bool or SedDataGenerator
-        If the data generator is created successfully, return the instance of SedDataGenerator; otherwise, return False
+    SedDataGenerator
+        An instance of SedDataGenerator.
     """
 
     if 'id' not in dict_dataGenerator or 'math' not in dict_dataGenerator:
-        print('The id and math attributes of a data generator are required.')
-        return False
+        raise ValueError('The id and math attributes of a data generator are required.')
     dataGenerator=doc.createDataGenerator()
-    if not operation_flag_check(dataGenerator.setId(dict_dataGenerator['id']), 'Set the id attribute of a data generator'):
-        return False
-    if 'name' in dict_dataGenerator:
-        if not operation_flag_check(dataGenerator.setName(dict_dataGenerator['name']), 'Set the name attribute of a data generator'):
-            return False  
-    if not operation_flag_check(dataGenerator.setMath(libsedml.parseFormula(dict_dataGenerator['math'])), 'Set the math attribute of a data generator'):
-        return False
-    if 'listOfVariables' in dict_dataGenerator:
-        for dict_variable in dict_dataGenerator['listOfVariables']:
-            sedVariable=dataGenerator.createVariable()
-            if not _setVariable(sedVariable,dict_variable):
-                return False
+    try:
+        _operation_flag_check(dataGenerator.setId(dict_dataGenerator['id']), 'Set the id attribute of a data generator')
+        if 'name' in dict_dataGenerator:
+            _operation_flag_check(dataGenerator.setName(dict_dataGenerator['name']), 'Set the name attribute of a data generator')
+        _operation_flag_check(dataGenerator.setMath(libsedml.parseFormula(dict_dataGenerator['math'])), 'Set the math attribute of a data generator')
+        if 'listOfVariables' in dict_dataGenerator:
+            for dict_variable in dict_dataGenerator['listOfVariables']:
+                sedVariable=dataGenerator.createVariable()
+                _setVariable(sedVariable,dict_variable)
+    except ValueError as e:
+        raise
     if 'listOfParameters' in dict_dataGenerator:
         for dict_parameter in dict_dataGenerator['listOfParameters']:
-            sedParameter=dataGenerator.createParameter()
             if 'id' not in dict_parameter or 'value' not in dict_parameter:
-                print('The id and value attributes of a parameter are required.')
-                return False
-            if not operation_flag_check(sedParameter.setId(dict_parameter['id']), 'Set the id attribute of a parameter'):
-                return False
-            if 'name' in dict_parameter:
-                if not operation_flag_check(sedParameter.setName(dict_parameter['name']), 'Set the name attribute of a parameter'):
-                    return False
-            if not operation_flag_check(sedParameter.setValue(dict_parameter['value']), 'Set the value attribute of a parameter'):
-                return False
-            if 'metaid' in dict_parameter:
-                if not operation_flag_check(sedParameter.setMetaId(dict_parameter['metaid']), 'Set the metaid attribute of a parameter'):
-                    return False
-    return True
+                raise ValueError('The id and value attributes of a parameter are required.')
+            sedParameter=dataGenerator.createParameter()
+            try:
+                _operation_flag_check(sedParameter.setId(dict_parameter['id']), 'Set the id attribute of a parameter')
+                if 'name' in dict_parameter:
+                    _operation_flag_check(sedParameter.setName(dict_parameter['name']), 'Set the name attribute of a parameter')
+                _operation_flag_check(sedParameter.setValue(dict_parameter['value']), 'Set the value attribute of a parameter')
+                if 'metaid' in dict_parameter:
+                    _operation_flag_check(sedParameter.setMetaId(dict_parameter['metaid']), 'Set the metaid attribute of a parameter')
+            except ValueError as e:
+                raise
+    return dataGenerator
 
 def get_dict_dataGenerator(dataGenerator):
     """
@@ -2003,47 +2110,51 @@ def get_dict_dataGenerator(dataGenerator):
     ----------
     dataGenerator: SedDataGenerator
         An instance of SedDataGenerator.
+    
+    Raises
+    ------
+    ValueError
+        If _get_dict_variable(sedVariable) failed.
+        If the id and value attributes of a parameter are not set.
+        If the id and math attributes of a data generator are not set.
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         {'id':'dataGenerator1','name':'dataGenerator1','math':'varId or complex math infix ','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
         dict_parameter format: {'id':'param1','name':None,'value':float,'metaid':None}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
+
+    if not dataGenerator.isSetId() or not dataGenerator.isSetMath():
+        raise ValueError('The id and math attributes of a data generator are required.')
     dict_dataGenerator = {}
     dict_dataGenerator['id'] = dataGenerator.getId()
     if dataGenerator.isSetName():
         dict_dataGenerator['name'] = dataGenerator.getName()
-    if dataGenerator.isSetMath():
-        dict_dataGenerator['math'] = libsedml.formulaToL3String(dataGenerator.getMath())
-    else:
-        print('The math attribute of a data generator is required.')
-        return False
+    dict_dataGenerator['math'] = libsedml.formulaToL3String(dataGenerator.getMath())  
     if dataGenerator.getNumVariables()>0:
         dict_dataGenerator['listOfVariables'] = []
     for sedVariable in dataGenerator.getListOfVariables():
-        dict_variable = _get_dict_variable(sedVariable)
-        if not dict_variable:
-            return False
-        dict_dataGenerator['listOfVariables'].append(dict_variable)
+        try:
+            dict_variable = _get_dict_variable(sedVariable)
+        except ValueError as e:
+            raise
+        dict_dataGenerator['listOfVariables'].append(dict_variable)   
     if dataGenerator.getNumParameters()>0:
         dict_dataGenerator['listOfParameters'] = []
     for sedParameter in dataGenerator.getListOfParameters():
-        if sedParameter.isSetId() and sedParameter.isSetValue():
-            dict_parameter = {}
-            dict_parameter['id'] = sedParameter.getId()
-            if sedParameter.isSetName():
-                dict_parameter['name'] = sedParameter.getName()
-            dict_parameter['value'] = sedParameter.getValue()
-            if sedParameter.isSetMetaId():
-                dict_parameter['metaid'] = sedParameter.getMetaId()
-            dict_dataGenerator['listOfParameters'].append(dict_parameter)
-        else:
-            print('The id and value attributes of a parameter are required.')
-            return False
+        if sedParameter.unsetId() and sedParameter.unsetValue():
+            raise ValueError('The id and value attributes of a parameter are required.')
+        dict_parameter = {}
+        dict_parameter['id'] = sedParameter.getId()
+        if sedParameter.isSetName():
+            dict_parameter['name'] = sedParameter.getName()
+        dict_parameter['value'] = sedParameter.getValue()
+        if sedParameter.isSetMetaId():
+            dict_parameter['metaid'] = sedParameter.getMetaId()
+        dict_dataGenerator['listOfParameters'].append(dict_parameter)
     return dict_dataGenerator
 
 def setDataSet(dataSet,dict_dataSet):
@@ -2059,6 +2170,12 @@ def setDataSet(dataSet,dict_dataSet):
         {'id':'dataSet1','name':'optional,a human readable descriptor of a data set','label':'a unique label','dataReference':'must be the ID of a DataGenerator element'}
         The id, label and dataReference attributes of a data set are required.
         The label can be used as column headers if 2D output is exported as CSV files.
+    
+    Raises
+    ------
+    ValueError
+        If the id, label and dataReference attributes of a data set are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -2070,19 +2187,18 @@ def setDataSet(dataSet,dict_dataSet):
     bool
         Whether the data set is set successfully.  
     """
-
+   
     if 'id' not in dict_dataSet or 'label' not in dict_dataSet or 'dataReference' not in dict_dataSet:
-        print('The id, label and dataReference attributes of a data set are required.')
-        return False
-    if not operation_flag_check(dataSet.setId(dict_dataSet['id']), 'Set the id attribute of a data set'):
-        return False
-    if 'name' in dict_dataSet:
-        if not operation_flag_check(dataSet.setName(dict_dataSet['name']), 'Set the name attribute of a data set'):
-            return False
-    if not operation_flag_check(dataSet.setLabel(dict_dataSet['label']), 'Set the label attribute of a data set'):
-        return False
-    if not operation_flag_check(dataSet.setDataReference(dict_dataSet['dataReference']), 'Set the dataReference attribute of a data set'):
-        return False
+        raise ValueError('The id, label and dataReference attributes of a data set are required.')
+    try:
+        _operation_flag_check(dataSet.setId(dict_dataSet['id']), 'Set the id attribute of a data set')
+        if 'name' in dict_dataSet:
+            _operation_flag_check(dataSet.setName(dict_dataSet['name']), 'Set the name attribute of a data set')
+        _operation_flag_check(dataSet.setLabel(dict_dataSet['label']), 'Set the label attribute of a data set')
+        _operation_flag_check(dataSet.setDataReference(dict_dataSet['dataReference']), 'Set the dataReference attribute of a data set')
+    except ValueError as e:
+        raise
+
     return True
 
 def _get_dict_dataSet(dataSet):
@@ -2126,6 +2242,12 @@ def create_sedReport(doc,dict_report):
         {'id':'report1','name':'report1','listOfDataSets':[dict_dataSet]}
         The id and listOfDataSets attributes of a report are required.
         The name attribute is optional.
+    
+    Raises
+    ------
+    ValueError
+        If the id and listOfDataSets attributes of a report are not set.
+        If any operation returns an error.
 
     Side effects
     ------------
@@ -2134,23 +2256,22 @@ def create_sedReport(doc,dict_report):
 
     Returns
     -------
-    bool or SedReport
-        If the report is created successfully, return the instance of SedReport; otherwise, return False
+    SedReport
+        An instance of SedReport.
     """
 
     if 'id' not in dict_report or 'listOfDataSets' not in dict_report:
-        print('The id and listOfDataSets attributes of a report are required.')
-        return False
+        raise ValueError('The id and listOfDataSets attributes of a report are required.')
     sedReport=doc.createReport()
-    if not operation_flag_check(sedReport.setId(dict_report['id']), 'Set the id attribute of a report'):
-        return False
-    if 'name' in dict_report:
-        if not operation_flag_check(sedReport.setName(dict_report['name']), 'Set the name attribute of a report'):
-            return False
-    for dict_dataSet in dict_report['listOfDataSets']:
-        dataSet=sedReport.createDataSet()
-        if not setDataSet(dataSet,dict_dataSet):
-            return False
+    try:
+        _operation_flag_check(sedReport.setId(dict_report['id']), 'Set the id attribute of a report')
+        if 'name' in dict_report:
+            _operation_flag_check(sedReport.setName(dict_report['name']), 'Set the name attribute of a report')
+        for dict_dataSet in dict_report['listOfDataSets']:
+            dataSet=sedReport.createDataSet()
+            setDataSet(dataSet,dict_dataSet)
+    except ValueError as e:
+        raise
     return sedReport
 
 def get_dict_report(sedReport):
@@ -2192,41 +2313,43 @@ def create_sedDocment(dict_sedDocument):
         The dictionary format:
         {'listOfDataDescriptions':[dict_dataDescription],'listOfModels':[dict_model],'listOfSimulations':[dict_simulation],
         'listOfTasks':[dict_task],'listOfDataGenerators':[dict_dataGenerator],'listOfReports':[dict_report]}
+    
+    Raises
+    ------
+    ValueError
+        If any operation returns an error.
 
     Returns
     -------
-    bool or SedDocument
-        If the SED-ML document is created successfully, return the instance of SedDocument; otherwise, return False
+    SedDocument
+        An instance of SedDocument.
         The version and level of the SED-ML document are set to 1 and 4, respectively.    
     """
 
     doc = libsedml.SedDocument(1,4)
-    if 'listOfDataDescriptions' in dict_sedDocument:
-        for dict_dataDescription in dict_sedDocument['listOfDataDescriptions']:
-            if not create_dataDescription(doc,dict_dataDescription):
-                return False
-    if 'listOfModels' in dict_sedDocument:
-        for dict_model in dict_sedDocument['listOfModels']:
-            if not create_sedModel(doc,dict_model):
-                return False
-    if 'listOfSimulations' in dict_sedDocument:
-        for dict_simulation in dict_sedDocument['listOfSimulations']:
-            if not create_simulation(doc,dict_simulation):
-                return False
-    if 'listOfTasks' in dict_sedDocument:
-        for dict_task in dict_sedDocument['listOfTasks']:
-            if not create_abstractTask(doc,dict_task):
-                return False
-    if 'listOfDataGenerators' in dict_sedDocument:
-        for dict_dataGenerator in dict_sedDocument['listOfDataGenerators']:
-            if not create_dataGenerator(doc,dict_dataGenerator):
-                return False
-    if 'listOfReports' in dict_sedDocument:
-        for dict_report in dict_sedDocument['listOfReports']:
-            if not create_sedReport(doc,dict_report):
-                return False
+    try:
+        if 'listOfDataDescriptions' in dict_sedDocument:
+            for dict_dataDescription in dict_sedDocument['listOfDataDescriptions']:
+                create_dataDescription(doc,dict_dataDescription)
+        if 'listOfModels' in dict_sedDocument:
+            for dict_model in dict_sedDocument['listOfModels']:
+                create_sedModel(doc,dict_model)
+        if 'listOfSimulations' in dict_sedDocument:
+            for dict_simulation in dict_sedDocument['listOfSimulations']:
+                create_simulation(doc,dict_simulation)
+        if 'listOfTasks' in dict_sedDocument:
+            for dict_task in dict_sedDocument['listOfTasks']:
+                create_abstractTask(doc,dict_task)
+        if 'listOfDataGenerators' in dict_sedDocument:
+            for dict_dataGenerator in dict_sedDocument['listOfDataGenerators']:
+                create_dataGenerator(doc,dict_dataGenerator)
+        if 'listOfReports' in dict_sedDocument:
+            for dict_report in dict_sedDocument['listOfReports']:
+                create_sedReport(doc,dict_report)
+    except ValueError as e:
+        raise
     return doc
-
+   
 def get_dict_sedDocument(doc):
     """
     Get the information of a SED-ML document
@@ -2235,6 +2358,16 @@ def get_dict_sedDocument(doc):
     ----------
     doc: SedDocument
         An instance of SedDocument.
+    
+    Raises
+    ------
+    ValueError
+        If get_dict_dataDescription(dataDescription) failed.
+        If get_dict_model(sedModel) failed.
+        If get_dict_simulation(sedSimulation) failed.
+        If get_dict_abstractTask(task) failed.
+        If get_dict_dataGenerator(dataGenerator) failed.
+        If get_dict_report(sedReport) failed.
 
     Notes
     -----
@@ -2242,372 +2375,43 @@ def get_dict_sedDocument(doc):
 
     Returns
     -------
-    dict or bool
+    dict
         The dictionary format:
         {'listOfDataDescriptions':[dict_dataDescription],'listOfModels':[dict_model],'listOfSimulations':[dict_simulation],
         'listOfTasks':[dict_task],'listOfDataGenerators':[dict_dataGenerator],'listOfReports':[dict_report]}
         Only the attributes that are set will be returned.
-        If the required attributes are not set, return False.
     """
     dict_sedDocument = {}
-    if doc.getNumDataDescriptions()>0:
+
+    try:
         dict_sedDocument['listOfDataDescriptions'] = []
         for dataDescription in doc.getListOfDataDescriptions():
-            dict_dataDescription= get_dict_dataDescription(dataDescription)
-            if not dict_dataDescription:
-                return False
-            dict_sedDocument['listOfDataDescriptions'].append(dict_dataDescription)
-    if doc.getNumModels()>0:
+            dict_sedDocument['listOfDataDescriptions'].append(get_dict_dataDescription(dataDescription))
         dict_sedDocument['listOfModels'] = []
         for sedModel in doc.getListOfModels():
-            dict_model = get_dict_model(sedModel)
-            if not dict_model:
-                return False
-            dict_sedDocument['listOfModels'].append(dict_model)
-    if doc.getNumSimulations()>0:
+            dict_sedDocument['listOfModels'].append(get_dict_model(sedModel))
         dict_sedDocument['listOfSimulations'] = []
         for sedSimulation in doc.getListOfSimulations():
-            dict_simulation = get_dict_simulation(sedSimulation)
-            if not dict_simulation:
-                return False
-            dict_sedDocument['listOfSimulations'].append(dict_simulation)
-    if doc.getNumTasks()>0:
+            dict_sedDocument['listOfSimulations'].append(get_dict_simulation(sedSimulation))
         dict_sedDocument['listOfTasks'] = []
         for task in doc.getListOfTasks():
-            dict_task = get_dict_abstractTask(task)
-            if not dict_task:
-                return False
-            dict_sedDocument['listOfTasks'].append(dict_task)
-    if doc.getNumDataGenerators()>0:
+            dict_sedDocument['listOfTasks'].append(get_dict_abstractTask(task))
         dict_sedDocument['listOfDataGenerators'] = []
         for dataGenerator in doc.getListOfDataGenerators():
-            dict_dataGenerator = get_dict_dataGenerator(dataGenerator)
-            if not dict_dataGenerator:
-                return False
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator)
-    if doc.getNumOutputs()>0:
+            dict_sedDocument['listOfDataGenerators'].append(get_dict_dataGenerator(dataGenerator))
         dict_sedDocument['listOfReports'] = []
         for output in doc.getListOfOutputs():
             if output.isSedReport():
                 dict_sedDocument['listOfReports'].append(get_dict_report(output))
+    except ValueError as e:
+        raise
     return dict_sedDocument
-
-def write_sedml(doc,file_name):
-    """
-    Write the SED-ML document to a file
-    
-    Parameters
-    ----------
-    doc: SedDocument
-        An instance of SedDocument.
-    file_name: str
-        The full path of the file
-
-    Side effects
-    ------------
-    A SED-ML file is created.
-
-    """
-    libsedml.writeSedMLToFile(doc,file_name)
-
-def read_sedml(file_name):
-    """
-    Read the SED-ML document from a file
-    
-    Parameters
-    ----------
-    file_name: str
-        The full path of the file
-
-    Raises
-    ------
-    FileNotFoundError
-        If the file is not found.
-
-    Returns
-    -------
-    SedDocument
-        An instance of SedDocument.
-    """
-
-    if not os.path.exists(file_name):
-        raise FileNotFoundError('The file {0} is not found.'.format(file_name))
-    doc = libsedml.readSedMLFromFile(file_name)
-    return doc
-
-def validate_sedml(file_name):
-    """
-    Validate the SED-ML document from a file
-
-    Parameters
-    ----------
-    file_name: str
-        The full path of the file
-    
-    Raises
-    ------
-    FileNotFoundError
-        If the file is not found.
-
-    Returns
-    -------
-    int
-        The number of errors.
-    """
-    try:
-        doc = read_sedml(file_name)
-    except FileNotFoundError as e:
-        raise e
-    num_errors = doc.getNumErrors(libsedml.LIBSEDML_SEV_ERROR)
-    num_warnings = doc.getNumErrors(libsedml.LIBSEDML_SEV_WARNING)
-
-    print ('file: {0} has {1} warning(s) and {2} error(s)'
-        .format(file_name, num_warnings, num_errors))
-
-    log = doc.getErrorLog()
-    for i in range(log.getNumErrors()):
-        err = log.getError(i)
-        print('{0} L{1} C{2}: {3}'.format(err.getSeverityAsString(), err.getLine(), err.getColumn(), err.getMessage()))
-    
-    if get_dict_sedDocument(doc) and num_errors == 0:
-        return True
-    else:
-        return False 
-
-def create_sedDocment_user_task(model_source,changes,simSetting,outputs):
-    """
-    Create a SED-ML document with user-defined information
-    Assume single model, single simulation, single task, single report
-    Assume the model is a CellML model
-   
-    Parameters
-    ----------
-    model_source: str
-        The source of the model, e.g., '../tests/csv/test_model_noExt.cellml'
-    changes: dict
-        The dictionary format:
-        {'id':{'component':str,'name':str,'newValue':str}}
-        The id, component, name and newValue attributes of a change are required.
-    simSetting: dict
-        The dictionary format:
-        - if 'UniformTimeCourse', {'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':float,'outputStartTime':float,'outputEndTime':float,'numberOfSteps':int}
-        - if 'OneStep', {'type':'OneStep','algorithm':dict_algorithm,'step':float}
-        - if 'SteadyState', {'type':'SteadyState','algorithm':dict_algorithm}
-        dict_algorithm format: {'kisaoID':str,'name':str,'listOfAlgorithmParameters':[dict_algorithmParameter]}
-        dict_algorithmParameter format: {'kisaoID':str,'name':str,'value':str}
-        The kisaoID, name and value attributes of a algorithmParameter are required.
-
-    outputs: dict
-        The dictionary format:
-        {'id':{'component':str,'name':str,'scale':float}}    
-
-    Returns
-    -------
-    bool or SedDocument
-        If the SED-ML document is created successfully, return the instance of SedDocument; otherwise, return False
-        The version and level of the SED-ML document are set to 1 and 4, respectively.
-    """
-
-    dict_sedDocument={}
-    # model
-    model_name = PurePath(model_source).stem 
-    dict_model={'id':model_name,'source':model_source,'language':CELLML_URN,'listOfChanges':[]}
-    for change in changes.values():
-        dict_change_Attribute = {'target': target_component_variable_initial(change['component'], change['name']),'newValue': change['newValue']} 
-        dict_model['listOfChanges'].append(dict_change_Attribute)
-    dict_sedDocument['listOfModels']=[dict_model]
-
-    # simulation
-    sim_id = 'sim_'+ model_name
-    if simSetting['type'] == 'UniformTimeCourse':
-        dict_simulation={'id':sim_id, 'type':'UniformTimeCourse', 'algorithm':simSetting['algorithm'],'initialTime':simSetting['initialTime'],
-                         'outputStartTime':simSetting['outputStartTime'],'outputEndTime':simSetting['outputEndTime'],'numberOfSteps':simSetting['numberOfSteps']}
-    elif simSetting['type'] == 'OneStep':
-        dict_simulation={'id':sim_id, 'type':'OneStep', 'algorithm':simSetting['algorithm'],'step':simSetting['step']}
-    elif simSetting['type'] == 'SteadyState':
-        dict_simulation={'id':sim_id, 'type':'SteadyState', 'algorithm':simSetting['algorithm']}
-
-    dict_sedDocument['listOfSimulations']= [dict_simulation]
-    
-    # task
-    task_id = 'task_'+ model_name
-    dict_task={'id':task_id,'type':'Task', 'modelReference':model_name,'simulationReference':sim_id}
-    dict_sedDocument['listOfTasks']= [dict_task]
-
-    # output
-    dict_sedDocument['listOfDataGenerators']= []
-    dict_report={'id':'report_'+ model_name,'name':'report_'+ model_name,'listOfDataSets':[]}
-
-    for id,output in outputs.values():
-        dict_variable={'id':output[id],'target':target_component_variable(output['component'], output['name']),'modelReference':model_name,'taskReference':task_id}
-        if 'scale' in output:
-            dict_parameter={'id':'scale','value':output['scale']}
-            dict_dataGenerator={'id':output[id],'name':output[id],'math':output[id]+'*scale','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
-        else:
-            dict_dataGenerator={'id':output[id],'name':output[id],'math':output[id],'listOfVariables':[dict_variable]}
-        dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator)
-        dict_dataSet={'id':output[id],'label':output[id],'dataReference':output[id]}
-        dict_report['listOfDataSets'].append(dict_dataSet)
-
-    dict_sedDocument['listOfReports']= [dict_report]
-
-    doc=create_sedDocment(dict_sedDocument)
-    return doc
-
-def create_sedDocment_user_task_pe(model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt ):
-    """
-    Assume single model, single pe task, single report
-    
-    """
-
-    dict_sedDocument={}
-    # model
-    model_name = PurePath(model_source).stem
-    dict_model={'id':model_name,'source':model_source,'language':CELLML_URN,'listOfChanges':[]}
-    for change in changes.values():
-        dict_change_Attribute = {'target': target_component_variable_initial(change['component'], change['name']),'newValue': change['newValue']} 
-        dict_model['listOfChanges'].append(dict_change_Attribute)
-    dict_sedDocument['listOfModels']=[dict_model] 
-   
-    # report holder
-    dict_report={'id':model_name+'_pe_final','name':model_name+'_pe','listOfDataSets':[]}
-    # pe task holder
-    dict_parameterEstimationTask= {'id':model_name+'_pe','type':'ParameterEstimationTask','algorithm':dict_algorithm_opt,'objective':{'type':'leastSquare'},
-                       'listOfAdjustableParameters':[],'listOfFitExperiments':[]} 
-    # adjustableParameters
-    for id, adjustableParameter in adjustableParameters.items():
-        dict_bounds={'lowerBound':adjustableParameter['lowerBound'],'upperBound':adjustableParameter['upperBound'],'scale':'linear'}
-        dict_adjustableParameter = {'id':id,'modelReference':model_name,'target':target_component_variable_initial(adjustableParameter['component'], adjustableParameter['name']),
-                                                 'initialValue':adjustableParameter['initialValue'],'bounds':dict_bounds,'listOfExperimentReferences':adjustableParameter['experimentReferences']}
-        
-        dict_parameterEstimationTask['listOfAdjustableParameters'].append(dict_adjustableParameter)
-    
-    # Describe the experimental data
-    dict_sedDocument['listOfDataDescriptions']= []
-    # Fixed dimension description: for 2D csv, the column headers are string, the values are double
-    dict_dimDescription={'id':'Index','name':'Index','indexType':'integer','dim2':{'id':'ColumnIds','name':'ColumnIds','indexType':'string','valueType':'double'}}
-
-    for id, experimentData_file in experimentData_files.items():
-        dict_dataDescription={'id':id,'name':experimentData_file['data_summary'], 'source':experimentData_file['data_file'],'format':'csv','dimensionDescription':dict_dimDescription,
-                              'listOfDataSources':[]}
-        if 'time' in experimentData_file:
-            for id, time in experimentData_file['time'].items():
-                dict_slice_time={'reference':'ColumnIds','value':time['column_name'],'startIndex':time['startIndex'],'endIndex':time['endIndex']}
-                dict_dataSource_time={'id':id,'name':'time_'+id,'listOfSlices':[dict_slice_time]}
-                dict_dataDescription['listOfDataSources'].append(dict_dataSource_time)
-        if 'experimentalConditions' in experimentData_file:
-            for id, initial in experimentData_file['experimentalConditions'].items():
-                dict_slice_initial_index={'reference':'Index','value':initial['index_value']}
-                dict_slice_initial_column={'reference':'ColumnIds','value':initial['column_name']}
-                dict_dataSource_initial={'id':id,'name':'init_'+id,'listOfSlices':[dict_slice_initial_index,dict_slice_initial_column]}
-                dict_dataDescription['listOfDataSources'].append(dict_dataSource_initial)
-        if 'observables' in experimentData_file:
-            for id, observe in experimentData_file['observables'].items():
-                dict_slice_observe={'reference':'Index','value':observe['column_name'],'startIndex':observe['startIndex'],'endIndex':observe['endIndex']}
-                dict_dataSource_observe={'id':id,'name':'observe_'+id,'listOfSlices':[dict_slice_observe]}
-                dict_dataDescription['listOfDataSources'].append(dict_dataSource_observe)     
-        if 'pointWeights' in experimentData_file:
-            for id, pointWeight in experimentData_file['pointWeights'].items():
-                dict_slice_pointWeight={'reference':'Index','value':pointWeight['column_name'],'startIndex':pointWeight['startIndex'],'endIndex':pointWeight['endIndex']}
-                dict_dataSource_pointWeight={'id':id,'name':'pointWeight_'+id,'listOfSlices':[dict_slice_pointWeight]}
-                dict_dataDescription['listOfDataSources'].append(dict_dataSource_pointWeight)
-       
-        dict_sedDocument['listOfDataDescriptions'].append(dict_dataDescription)
-
-    dict_sedDocument['listOfDataGenerators']= []
-
-    # fitExperiments
-    for id, fitExperiment in fitExperiments.items():
-        dict_fitExperiment={'id':id,'type':fitExperiment['type'],'algorithm':fitExperiment['algorithm'],'listOfFitMappings':[]}
-        if fitExperiment['type']=='timeCourse':
-            fileId=fitExperiment['time'][0]
-            dataSourceId=fitExperiment['time'][1]
-            dict_variable=experimentData_files[fileId]['time'][dataSourceId]
-            dict_variable_time={'id':dict_variable['name'],'target':target_component_variable(dict_variable['component'], dict_variable['name']),'modelReference':model_name,'taskReference':model_name+'_pe'}
-            dict_dataGenerator_time={'id':dataSourceId+'_target','name':'dataGenerator1','math':time['name'],'listOfVariables':[dict_variable_time]}
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_time)
-            dict_fitMapping_time= {'type':'time','dataSource':dataSourceId,'target':dataSourceId+'_target'}
-            dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_time)
-
-        for experimentalCondition_des in fitExperiment['experimentalConditions']:
-            fileId=experimentalCondition_des[0]
-            dataSourceId=experimentalCondition_des[1]
-            experimentalCondition=experimentData_files[fileId]['experimentalConditions'][dataSourceId]
-            dict_variable_init={'id':experimentalCondition['name'],'target':target_component_variable_initial(experimentalCondition['component'], experimentalCondition['name']),'modelReference':model_name,'taskReference':model_name+'_pe'}
-            dict_dataGenerator_init={'id':dataSourceId+'_target','name':'dataGenerator1','math':experimentalCondition['name'],'listOfVariables':[dict_variable_init]}
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_init)
-            dict_fitMapping_initial= {'type':'experimentalCondition','dataSource':dataSourceId,'target':dataSourceId+'_target'}
-            dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_initial)
-
-        for observable_des in fitExperiment['observables']:
-            fileId=observable_des[0]
-            dataSourceId=observable_des[1]
-            observable=experimentData_files[fileId]['observables'][dataSourceId]
-            dict_variable_observe={'id':observable['name'],'target':target_component_variable(observable['component'], observable['name']),'modelReference':model_name,'taskReference':model_name+'_pe'}
-            dict_dataGenerator_observe={'id':dataSourceId+'_target','name':'dataGenerator1','math':observable['name'],'listOfVariables':[dict_variable_observe]}
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_observe)
-            dict_dataSet={'id':dataSourceId+'_dataset','label':dataSourceId + '_'+ observable['name'],'dataReference':dataSourceId+'_target'}
-            dict_report['listOfDataSets'].append(dict_dataSet)           
-            if isinstance(observable['weight'], str):
-                dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataSourceId+'_target','pointWeight':observable['weight']}
-            else:
-                dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataSourceId+'_target','weight':observable['weight']}
-
-            dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_observe)     
-        
-        dict_parameterEstimationTask['listOfFitExperiments'].append(dict_fitExperiment)
-
-    # report the objective value and optimal values of the adjustable parameters
-  
-    dict_variable_objective_value={'id':'fun','taskReference':model_name+'_pe', 'symbol':'sedml:parameterestimation:objective_value'}
-    dict_dataGenerator_objective_value={'id':'pe_obj','math':'fun','listOfVariables':[dict_variable_objective_value]}
-    dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_objective_value)
-    dict_dataSet_objective_value={'id':'dataset_OBJ','label':'OBJ','dataReference':'pe_obj'}
-    dict_report['listOfDataSets'].append(dict_dataSet_objective_value)
-
-    dict_variable_adjustableParameters={'id':'adjustableParameters','taskReference':model_name+'_pe', 'symbol':'sedml:parameterestimation:optimal_adjustableParameters'}
-    dict_dataGenerator_adjustableParameters={'id':'pe_adjustableParameters','math':'adjustableParameters','listOfVariables':[dict_variable_adjustableParameters]}
-    dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_adjustableParameters)
-    dict_dataSet_adjustableParameters={'id':'dataset_ADJ','label':'ADJ','dataReference':'pe_adjustableParameters'}
-    dict_report['listOfDataSets'].append(dict_dataSet_adjustableParameters)
-
-    dict_sedDocument['listOfTasks']= [dict_parameterEstimationTask]
-    dict_sedDocument['listOfReports']= [dict_report]
-    doc=create_sedDocment(dict_sedDocument)
-
-    return doc
 
 # Test
 if __name__ == '__main__':
+
+    save_sedml_type_codes()
     
-    print(SEDML_TYPE_CODES_TABLE)
-    dict_sedDocument={}
-
-    dict_model={'id':'model1','source':'../tests/csv/test_model_noExt.cellml','language':CELLML_URN,'listOfChanges':[]}
-    dict_sedDocument['listOfModels']=[dict_model]
-
-    dict_algorithmParameter={'kisaoID':'KISAO:0000483','name':'step size','value':'0.001'}
-    dict_algorithm={'kisaoID':'KISAO:0000030','name':'Euler forward method', 'listOfAlgorithmParameters':[dict_algorithmParameter]}
-    dict_simulation={'id':'timeCourse1', 'type':'UniformTimeCourse', 'algorithm':dict_algorithm, 
-                     'initialTime':0.0,'outputStartTime':0.0,'outputEndTime':10.0,'numberOfSteps':1000}
-    dict_sedDocument['listOfSimulations']= [dict_simulation]
-
-    dict_task={'id':'task1','type':'Task', 'modelReference':'model1','simulationReference':'timeCourse1'}
-    dict_sedDocument['listOfTasks']= [dict_task]
-
-    dict_variable={'id':'v','target':target_component_variable('SLC_template3_ss', 'v'),'modelReference':'model1','taskReference':'task1'}
-    dict_parameter={'id':'scale','value':10.0}
-    dict_dataGenerator={'id':'output','name':'dataGenerator1','math':'v*scale','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
-    dict_sedDocument['listOfDataGenerators']= [dict_dataGenerator]
-
-    dict_dataSet={'id':'dataSet1','label':'output','dataReference':'output'}
-    dict_report={'id':'report1','name':'report1','listOfDataSets':[dict_dataSet]}
-    dict_sedDocument['listOfReports']= [dict_report]
-
-    doc=create_sedDocment(dict_sedDocument)
-    filename='../tests/csv/test.sedml'
-    write_sedml(doc,filename)
-    print(validate_sedml(filename))
-    print(get_dict_sedDocument(doc))
+    
     
     

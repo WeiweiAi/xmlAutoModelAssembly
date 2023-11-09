@@ -1,7 +1,7 @@
 import sys
     # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(0, '..')
-from src.sedEditor import create_sedDocment_user_task,create_sedDocment_user_task_pe, write_sedml,validate_sedml,get_dict_sedDocument,target_component_variable,target_component_variable_initial
+from src.sedDocEditor import create_sedDocment_task,create_sedDocment_task_pe, write_sedml,validate_sedml
 
 def test_task():
     model_source='SLCT3_BG_test.cellml'
@@ -15,7 +15,7 @@ def test_task():
    # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
    # simSetting={'type':'SteadyState','algorithm':dict_algorithm}
     
-    doc=create_sedDocment_user_task(model_source,changes,simSetting,outputs)
+    doc=create_sedDocment_task(model_source,changes,simSetting,outputs)
     filename='./csv/SLCT3_BG_test.sedml'
     write_sedml(doc,filename)
     print(validate_sedml(filename))
@@ -110,9 +110,10 @@ def test_task_pe():
                           'parameter2':{'component':'SLCT3_BG_param','name':'kappa_re2','lowerBound':0.0,'upperBound':10.0,'initialValue':0.1,'scale':'linear','experimentReferences':[fitId]}
                           }         
 
-    doc=create_sedDocment_user_task_pe(model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
+    doc=create_sedDocment_task_pe(model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
     filename='./csv/test_pe.sedml'
     write_sedml(doc,filename)
     print(validate_sedml(filename))
 
+test_task()
 test_task_pe()

@@ -1,7 +1,21 @@
 from .solver import solve_euler, solve_scipy, algebra_evaluation, initialize_module
-from .analyser import get_externals
 
+"""
+====================
+The simulator module
+====================
+The simulator module provides the functions to simulate the model.
 
+The module defines the following classes:
+    * SimSettings - stores the simulation settings
+The module defines the following functions:
+    * getSimSettingFromDict - get the simulation settings from the dictionary of the simulation
+    * sim_UniformTimeCourse - simulate the model with UniformTimeCourse setting
+    * sim_TimeCourse - simulate the model with TimeCourse setting
+    * get_KISAO_parameters - get the parameters of the KISAO algorithm
+"""
+
+# The supported methods of the integration
 
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.ode.html
 SCIPY_SOLVERS = ['dopri5', 'dop853', 'VODE', 'LSODA']
@@ -19,7 +33,8 @@ class SimSettings():
     Attributes
     ----------
     type : str
-        The type of the simulation, the value can be 'OneStep', 'UniformTimeCourse', 'SteadyState' or 'timeCourse'
+        The type of the simulation, the value can be
+        'OneStep','UniformTimeCourse', 'SteadyState' or 'timeCourse'
     initial_time : float
         The initial time of the simulation
     output_start_time : float
@@ -57,13 +72,18 @@ def getSimSettingFromDict(dict_simulation):
     dict_simulation : dict
         The dictionary of the simulation
         If the type is 'OneStep', the format is {'type': 'OneStep', 'step': 0.1}
-        If the type is 'UniformTimeCourse', the format is {'type': 'UniformTimeCourse', 'initialTime': 0.0, 'outputStartTime': 0.0, 'outputEndTime': 10.0, 'numberOfSteps': 100}
+        If the type is 'UniformTimeCourse', the format is {'type': 'UniformTimeCourse',
+        'initialTime': 0.0, 'outputStartTime': 0.0, 'outputEndTime': 10.0, 'numberOfSteps': 100}
         If the type is 'SteadyState', the format is {'type': 'SteadyState'}
     
+    Raises
+    ------
+    ValueError
+        If the type is not supported
+        
     Returns
     -------
     :obj:`SimSettings`: the simulation settings
-    If the simulation type is not supported, return None
     """
 
     simSetting=SimSettings()
@@ -82,13 +102,13 @@ def getSimSettingFromDict(dict_simulation):
         pass
     else:
         print('The simulation type {} is not supported!'.format(simSetting.type))
-        return None    
+        raise ValueError('The simulation type {} is not supported!'.format(simSetting.type))    
     simSetting.method, simSetting.integrator_parameters=get_KISAO_parameters(dict_simulation['algorithm'])
     
     return simSetting
 
 
-def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module, current_state=None,parameters={}):
+def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable, current_state=None,parameters={}):
     """Simulate the model with UniformTimeCourse setting.
     
     Parameters
@@ -100,9 +120,10 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
     sim_setting : SimSettings
         The simulation settings
     observables : dict
-        The observables of the simulation, the format is {id:{'name': , 'component': , 'index': , 'type': }}
-    external_module : External_module
-        The external module
+        The observables of the simulation, the format is 
+        {id:{'name': , 'component': , 'index': , 'type': }}
+    external_variable : function
+        The external variable function for the model
     current_state : tuple
         The current state of the model.
         The format is (voi, states, rates, variables, current_index, sed_results)
@@ -111,10 +132,9 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
 
     Raises
     ------
-    ValueError
+    RuntimeError
         If the method is not supported
         If initialize_module fails
-    RuntimeError
         If solve_scipy fails
 
     Returns
@@ -124,15 +144,13 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
         The format is (voi, states, rates, variables, current_index, sed_results)
 
     """
-    if external_module.param_indices.isEmpty():
-        external_variable= None
-    else:
-        external_variable = get_externals(mtype,external_module)
+
     if current_state is None:
         try:
-            current_state=initialize_module(mtype,observables,sim_setting.number_of_steps,module,sim_setting.initial_time, external_variable,parameters)
+            current_state=initialize_module(mtype,observables,sim_setting.number_of_steps,module,
+                                            sim_setting.initial_time, external_variable,parameters)
         except ValueError as e:
-            raise e          
+            raise RuntimeError(str(e)) from e          
 
     output_step_size=(sim_setting.output_end_time-sim_setting.output_start_time)/sim_setting.number_of_steps
 
@@ -143,25 +161,30 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
     
     if mtype=='ode':
         if sim_setting.method=='Euler forward method':
-            current_state=solve_euler(module, current_state, observables, sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,step_size,external_variable)            
+            current_state=solve_euler(module, current_state, observables,
+                                      sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,
+                                      step_size,external_variable)            
         
         elif sim_setting.method in SCIPY_SOLVERS:
             try:
-                current_state=solve_scipy(module, current_state, observables, sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,sim_setting.method,sim_setting.integrator_parameters,external_variable)
+                current_state=solve_scipy(module, current_state, observables,
+                                          sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,
+                                          sim_setting.method,sim_setting.integrator_parameters,external_variable)
             except RuntimeError as e:
-                raise e
+                raise e from e
         else:
             print('The method {} is not supported!'.format(sim_setting.method))
-            raise ValueError('The method {} is not supported!'.format(sim_setting.method))
+            raise RuntimeError('The method {} is not supported!'.format(sim_setting.method))
     elif mtype=='algebraic':
-        current_state=algebra_evaluation(module,current_state,observables,sim_setting.number_of_steps,external_variable)
+        current_state=algebra_evaluation(module,current_state,observables,
+                                         sim_setting.number_of_steps,external_variable)
     else:
-        print('The model type {} is not supported!'.format(mtype)) # should not happen
-        return False
+        print('The model type {} is not supported!'.format(mtype)) # should not reach here
+        raise RuntimeError('The model type {} is not supported!'.format(mtype))
     
     return current_state
 
-def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters={}):
+def sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters={}):
     """Simulate the model with TimeCourse setting.
 
     Parameters
@@ -174,8 +197,8 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
         The simulation settings
     observables : dict
         The observables of the simulation, the format is {id:{'name': , 'component': , 'index': , 'type': }}
-    external_module : External_module
-        The external module
+    external_variable : function
+        The external variable function for the model
     current_state : tuple
         The current state of the model.
         The format is (voi, states, rates, variables, current_index, sed_results)
@@ -184,10 +207,9 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
     
     Raises
     ------
-    ValueError
+    RuntimeError
         If the method is not supported
         If initialize_module fails
-    RuntimeError
         If solve_scipy fails
         
     Returns
@@ -198,16 +220,13 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
     """
     
     number_of_steps=len(sim_setting.tspan)-1
-    
-    if external_module.param_indices.isEmpty():
-        external_variable= None
-    else:
-        external_variable = get_externals(mtype,external_module)
+            
     if current_state is None:
         try:
-            current_state=initialize_module(mtype,observables,number_of_steps,module,0,external_variable,parameters)
+            current_state=initialize_module(mtype,observables,number_of_steps,module,
+                                            0,external_variable,parameters)
         except ValueError as e:
-            raise e
+            raise RuntimeError(str(e)) from e
 
     output_step_size=(sim_setting.tspan[-1]-sim_setting.tspan[0])/number_of_steps
 
@@ -219,21 +238,26 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
     if mtype=='ode':
         if sim_setting.method=='Euler forward method':
             for i in range(number_of_steps):
-                current_state=solve_euler(module,current_state,observables, sim_setting.tspan[i],sim_setting.tspan[i+1],1,step_size,external_variable)                   
+                current_state=solve_euler(module,current_state,observables,
+                                          sim_setting.tspan[i],sim_setting.tspan[i+1],1,
+                                          step_size,external_variable)                   
         elif sim_setting.method in SCIPY_SOLVERS:
             for i in range(number_of_steps):
                 try:                      
-                    current_state=solve_scipy(module,current_state,observables, sim_setting.tspan[i],sim_setting.tspan[i+1],1,sim_setting.method,sim_setting.integrator_parameters,external_variable)
+                    current_state=solve_scipy(module,current_state,observables,
+                                              sim_setting.tspan[i],sim_setting.tspan[i+1],1,
+                                              sim_setting.method,sim_setting.integrator_parameters,external_variable)
                 except RuntimeError as e:
-                    raise e
+                    raise e from e
         else:
             print('The method {} is not supported!'.format(sim_setting.method))
-            raise ValueError('The method {} is not supported!'.format(sim_setting.method))
+            raise RuntimeError('The method {} is not supported!'.format(sim_setting.method))
     elif mtype=='algebraic':
-        current_state=algebra_evaluation(module,current_state,observables,number_of_steps,external_variable)
+        current_state=algebra_evaluation(module,current_state,observables,
+                                         number_of_steps,external_variable)
     else:
         print('The model type {} is not supported!'.format(mtype))
-        return False
+        raise RuntimeError('The model type {} is not supported!'.format(mtype))
     
     return current_state
 
@@ -247,6 +271,11 @@ def get_KISAO_parameters(algorithm):
         The dictionary of the KISAO algorithm
         Format: {'kisaoID': , 'name': , 'listOfAlgorithmParameters': [{'kisaoID': , 'name': , 'value': }]}
     
+    Raises
+    ------
+    ValueError
+        If the algorithm is not supported
+        
     Returns
     -------
     method : str
@@ -336,7 +365,7 @@ def get_KISAO_parameters(algorithm):
                 integrator_parameters['beta'] = float(p['value'])
     else:
         print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
-        return None, None
+        raise ValueError("The algorithm {} is not supported!".format(algorithm['kisaoID']))
     
     return method, integrator_parameters
 
