@@ -2,7 +2,6 @@ from .sedEditor import get_dict_sedDocument
 import libsedml
 from libsedml import writeSedMLToFile, readSedMLFromFile
 import os
-from pathlib import PurePath
 
 """
 This module provides functions to create a SED-ML document with user-defined information.

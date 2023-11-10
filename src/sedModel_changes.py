@@ -4,7 +4,9 @@ import os
 import re
 from lxml import etree
 import enum
-from .math4sedml import calc_compute_model_change_new_value
+from .math4sedml import compile_math, eval_math, AGGREGATE_MATH_FUNCTIONS
+import libsedml
+import numpy
 
 
 CELLML2NAMESPACE ={"cellml":"http://www.cellml.org/cellml/2.0#"}
@@ -412,3 +414,181 @@ def get_values_of_variable_model_xml_targets_of_model_change(change, sed_doc, mo
         variable_values[variable.getId()] = get_value_of_variable_model_xml_targets(variable, model_etrees)
 
     return variable_values
+
+def calc_compute_model_change_new_value(setValue, variable_values=None, range_values=None):
+    """ Calculate the new value of a compute model change
+
+    Args:
+        change (:obj:`ComputeModelChange`): change
+        variable_values (:obj:`dict`, optional): dictionary which contains the value of each variable of each
+            compute model change
+        range_values (:obj:`dict`, optional): dictionary which contains the value of each range of each
+            set value compute model change
+
+    Returns:
+        :obj:`float`: new value
+    """
+    compiled_math = compile_math(libsedml.formulaToString(setValue.getMath()))
+
+    workspace = {}
+
+    if setValue.isSetRange ():
+        workspace[setValue.getRange ()] = range_values.get(setValue.getRange (), None)
+        if workspace[setValue.getRange ()] is None:
+            raise ValueError('Value of range `{}` is not defined.'.format(setValue.getRange ()))
+
+    for param in setValue.getListOfParameters ():
+        workspace[param.getId()] = param.getValue()
+
+    for var in setValue.getListOfVariables ():
+        workspace[var.getId()] = variable_values.get(var.getId(), None)
+        if workspace[var.getId()] is None:
+            raise ValueError('Value of variable `{}` is not defined.'.format(var.getId()))
+
+    return eval_math(libsedml.formulaToString(setValue.getMath()), compiled_math, workspace)
+
+def calc_data_generator_results(data_generator, variable_results):
+    """ Calculate the results of a data generator from the results of its variables
+
+    Args:
+        data_generator (:obj:`DataGenerator`): data generator
+        variable_results (:obj:`VariableResults`): results for the variables of the data generator
+
+    Returns:
+        :obj:`numpy.ndarray`: result of data generator
+    """
+    var_shapes = set()
+    max_shape = []
+    for var in data_generator.getListOfVariables():
+        var_res = variable_results[var.getId()]
+        var_shape = var_res.shape
+        if not var_shape and var_res.size:
+            var_shape = (1,)
+        var_shapes.add(var_shape)
+
+        max_shape = max_shape + [1 if max_shape else 0] * (var_res.ndim - len(max_shape))
+        for i_dim in range(var_res.ndim):
+            max_shape[i_dim] = max(max_shape[i_dim], var_res.shape[i_dim])
+
+    if len(var_shapes) > 1:
+        print('Variables for data generator {} do not have consistent shapes'.format(data_generator.getId()),
+             )
+
+    compiled_math = compile_math(libsedml.formulaToString(data_generator.getMath()))
+
+    workspace = {}
+    for param in data_generator.getListOfParameters():
+        workspace[param.getId()] = param.getValue()
+
+    if not var_shapes:
+        value = eval_math(libsedml.formulaToString(data_generator.getMath()), compiled_math, workspace)
+        result = numpy.array(value)
+
+    else:
+        for aggregate_func in AGGREGATE_MATH_FUNCTIONS:
+            if re.search(aggregate_func + r' *\(', libsedml.formulaToString(data_generator.getMath())):
+                msg = 'Evaluation of aggregate mathematical functions such as `{}` is not supported.'.format(aggregate_func)
+                raise NotImplementedError(msg)
+
+        padded_var_shapes = []
+        for var in data_generator.getListOfVariables():
+            var_res = variable_results[var.getId()]
+            padded_var_shapes.append(
+                list(var_res.shape)
+                + [1 if var_res.size else 0] * (len(max_shape) - var_res.ndim)
+            )
+
+        result = numpy.full(max_shape, numpy.nan)
+        n_dims = result.ndim
+        for i_el in range(result.size):
+            el_indices = numpy.unravel_index(i_el, result.shape)
+
+            vars_available = True
+            for var, padded_shape in zip(data_generator.getListOfVariables(), padded_var_shapes):
+                var_res = variable_results[var.getId()]
+                if var_res.ndim == 0:
+                    if i_el == 0 and var_res.size:
+                        workspace[var.getId()] = var_res.tolist()
+                    else:
+                        vars_available = False
+                        break
+
+                else:
+                    for x, y in zip(padded_shape, el_indices):
+                        if (y + 1) > x:
+                            vars_available = False
+                            break
+                    if not vars_available:
+                        break
+
+                    workspace[var.getId()] = var_res[el_indices[0:var_res.ndim]]
+
+            if not vars_available:
+                continue
+
+            result_el = eval_math(libsedml.formulaToString(data_generator.getMath()), compiled_math, workspace)
+
+            if n_dims == 0:
+                result = numpy.array(result_el)
+            else:
+                result.flat[i_el] = result_el
+
+    return result
+
+def resolve_range(range, model_etrees=None):
+    """ Resolve the values of a range
+
+    Args:
+        range (:obj:`Range`): range
+        model_etrees (:obj:`dict` of :obj:`str` to :obj:`etree._Element`): map from the ids of models to element
+            trees of their sources; required to resolve variables of functional ranges
+
+    Returns:
+        :obj:`list` of :obj:`float`: values of the range
+
+    Raises:
+        :obj:`NotImplementedError`: if range isn't an instance of :obj:`UniformRange`, :obj:`VectorRange`,
+            or :obj:`FunctionalRange`.
+    """
+    if range.isSedUniformRange ():
+        if range.getType() == 'linear':
+            return numpy.linspace(range.getStart(), range.getEnd(), range.getNumberofSteps() + 1).tolist()
+
+        elif range.getType() == 'log':
+            return numpy.logspace(numpy.log10(range.getStart()), numpy.log10(range.getEnd()), range.getNumberofSteps() + 1).tolist()
+
+        else:
+            raise NotImplementedError('UniformRanges of type `{}` are not supported.'.format(range.getType()))
+
+    elif range.isSedVectorRange ():
+        return range.getValues()
+
+    elif range.isSedFunctionalRange ():
+        # compile math
+        compiled_math = compile_math(libsedml.formulaToString(range.getMath()))
+
+        # setup workspace to evaluate math
+        workspace = {}
+        for param in range.getListOfParameters ():
+            workspace[param.getId()] = param.getValue()
+
+        for var in range.getListOfVariables ():
+            if var.isSetSymbol ():
+                raise NotImplementedError('Symbols are not supported for variables of functional ranges')
+            if model_etrees[var.getModelReference()] is None:
+                raise NotImplementedError('Functional ranges that involve variables of non-XML-encoded models are not supported.')
+            workspace[var.getId()] = get_value_of_variable_model_xml_targets(var, model_etrees)
+
+        # calculate the values of the range
+        values = []
+        for child_range_value in resolve_range(range.getRange(), model_etrees=model_etrees):
+            workspace[range.getRange().getId()] = child_range_value
+
+            value = eval_math(libsedml.formulaToString(range.getMath()), compiled_math, workspace)
+            values.append(value)
+
+        # return values
+        return values
+
+    else:
+        raise NotImplementedError('Ranges of type `{}` are not supported.'.format(range.getTypeCode()))

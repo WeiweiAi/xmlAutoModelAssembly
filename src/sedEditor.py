@@ -443,7 +443,7 @@ def get_dict_dataDescription(sed_dataDescription):
     """
 
     dict_dataDescription = {}
-    if not sed_dataDescription.isSetId() or sed_dataDescription.unsetSource():
+    if not sed_dataDescription.isSetId() or not sed_dataDescription.isSetSource():
         raise ValueError('The id and source attributes of a data description are required.')
   
     dict_dataDescription['id'] = sed_dataDescription.getId()
@@ -731,19 +731,19 @@ def get_dict_algorithm(sed_algorithm):
         Only the attributes that are set will be returned.
     """
     dict_algorithm = {}
-    if sed_algorithm.unsetKisaoID():
+    if not sed_algorithm.isSetKisaoID():
         raise ValueError('The kisaoID attribute of an algorithm is required.')
     dict_algorithm['kisaoID'] = sed_algorithm.getKisaoID()
     if sed_algorithm.isSetName():
         dict_algorithm['name'] = sed_algorithm.getName()
     if sed_algorithm.getNumAlgorithmParameters()>0:
         dict_algorithm['listOfAlgorithmParameters'] = []
-    for sed_algorithmParameter in sed_algorithm.getListOfAlgorithmParameters():
-        try:
-            dict_algorithmParameter = _get_dict_algorithmParameter(sed_algorithmParameter)
-        except ValueError as e:
-            raise
-        dict_algorithm['listOfAlgorithmParameters'].append(dict_algorithmParameter)
+        for sed_algorithmParameter in sed_algorithm.getListOfAlgorithmParameters():
+            try:
+                dict_algorithmParameter = _get_dict_algorithmParameter(sed_algorithmParameter)
+            except ValueError as e:
+                raise
+            dict_algorithm['listOfAlgorithmParameters'].append(dict_algorithmParameter)
     return dict_algorithm
 
 def create_sim_UniformTimeCourse(doc,dict_uniformTimeCourse):
@@ -2145,7 +2145,7 @@ def get_dict_dataGenerator(dataGenerator):
     if dataGenerator.getNumParameters()>0:
         dict_dataGenerator['listOfParameters'] = []
     for sedParameter in dataGenerator.getListOfParameters():
-        if sedParameter.unsetId() and sedParameter.unsetValue():
+        if not sedParameter.isSetId() and not sedParameter.isSetValue():
             raise ValueError('The id and value attributes of a parameter are required.')
         dict_parameter = {}
         dict_parameter['id'] = sedParameter.getId()

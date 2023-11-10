@@ -1,11 +1,11 @@
-from sedCollector import get_models_referenced_by_task, get_variables_for_task, get_adjustableParameters, get_fit_experiments, get_df_from_dataDescription
-from sedModel_changes import resolve_model_and_apply_xml_changes, get_variable_info_CellML
-from sedEditor import get_dict_algorithm
-from optimiser import get_KISAO_parameters_opt
-from analyser import analyse_model_full, get_mtype,parse_model
-from coder import writePythonCode
-from simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, SimSettings, get_KISAO_parameters, sim_TimeCourse
-from sedReporter import exec_report
+from .sedCollector import get_models_referenced_by_task, get_variables_for_task, get_adjustableParameters, get_fit_experiments, get_df_from_dataDescription
+from .sedModel_changes import resolve_model_and_apply_xml_changes, get_variable_info_CellML
+from .sedEditor import get_dict_algorithm
+from .optimiser import get_KISAO_parameters_opt
+from .analyser import analyse_model_full, get_mtype,parse_model
+from .coder import writePythonCode
+from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, SimSettings, get_KISAO_parameters, sim_TimeCourse
+from .sedReporter import exec_report
 import tempfile
 import os
 import sys
@@ -66,9 +66,10 @@ def exec_task(doc,task,working_dir,model_base_dir,external_variables_info={},ext
                 mtype=get_mtype(analyser)
                 external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
                 # write Python code to a temporary file
-                _, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True)
+                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True)
                 writePythonCode(analyser, full_path)
                 module=load_module(full_path)
+                os.close(tempfile_py)
                 # and delete temporary file
                 os.remove(full_path)
 
@@ -160,7 +161,7 @@ def report_task(doc,task, variable_results, base_out_path, rel_out_path, report_
         sys.stdout.flush()
         if output.isSedReport ():
             output_result, output_status, output_exception, task_contributes_to_report = exec_report(
-                output,  report_formats, task)
+                output, variable_results, base_out_path, rel_out_path,  report_formats, task)
             
             print(' {}'.format(output_status))
             if output_exception:

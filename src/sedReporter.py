@@ -1,7 +1,7 @@
 import os
 import numpy
 import pandas
-from math4sedml import calc_data_generator_results
+from .sedModel_changes import calc_data_generator_results
 
 def writeReport(report, results, base_path, rel_path, format='csv'):
     rel_path = os.path.relpath(rel_path, '.')

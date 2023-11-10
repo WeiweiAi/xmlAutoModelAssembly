@@ -10,6 +10,7 @@ def test_task():
     model_source='SLCT3_BG_test.cellml'
     changes={'id':{'component':'SLCT3_BG_io','name':'q_Ai','newValue':'200'}}
     outputs={'v_Ai':{'component':'SLCT3_BG_test','name':'v_Ai','scale':1.0},
+             'v_Ao':{'component':'SLCT3_BG_test','name':'v_Ao'},
             't':{'component':'SLCT3_BG','name':'t'}
             }
     dict_algorithmParameter={'kisaoID':'KISAO:0000467', 'name':'max_step','value':'0.001'}
@@ -128,5 +129,5 @@ def test_task_pe():
     write_sedml(doc,filename)
     print(validate_sedml(filename))
 
-#test_task()
+test_task()
 test_task_pe()

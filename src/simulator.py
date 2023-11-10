@@ -357,78 +357,83 @@ def get_KISAO_parameters(algorithm):
         # Euler forward method
         method = KISAO_ALGORITHMS[algorithm['kisaoID']]
         integrator_parameters = {}
-        for p in algorithm['listOfAlgorithmParameters']:
-            if p['kisaoID'] == 'KISAO:0000483':
-                integrator_parameters['step_size'] = float(p['value'])
+        if 'listOfAlgorithmParameters' in algorithm:
+            for p in algorithm['listOfAlgorithmParameters']:
+                if p['kisaoID'] == 'KISAO:0000483':
+                    integrator_parameters['step_size'] = float(p['value'])
 
     elif algorithm['kisaoID'] == 'KISAO:0000535':
             # VODE
             method = KISAO_ALGORITHMS[algorithm['kisaoID']]
             integrator_parameters = {}
+            if 'listOfAlgorithmParameters' in algorithm:
+                for p in algorithm['listOfAlgorithmParameters']:
+                    if p['kisaoID'] == 'KISAO:0000209':
+                        integrator_parameters['rtol'] = float(p['value'])
+                    elif p['kisaoID'] == 'KISAO:0000211':
+                        integrator_parameters['atol'] = float(p['value'])
+                    elif p['kisaoID'] == 'KISAO:0000475':
+                        integrator_parameters['method'] = p['value']
+                    elif p['kisaoID'] == 'KISAO:0000415':
+                        integrator_parameters['nsteps'] = int(p['value'])
+                    elif p['kisaoID'] == 'KISAO:0000467':
+                        integrator_parameters['max_step'] = float(p['value'])
+                    elif p['kisaoID'] == 'KISAO:0000485':
+                        integrator_parameters['min_step'] = float(p['value'])
+                    elif p['kisaoID'] == 'KISAO:0000484':
+                        integrator_parameters['order'] = int(p['value'])
+    elif algorithm['kisaoID'] == 'KISAO:0000088':
+        # LSODA
+        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
+        integrator_parameters = {}
+        if 'listOfAlgorithmParameters' in algorithm:
             for p in algorithm['listOfAlgorithmParameters']:
                 if p['kisaoID'] == 'KISAO:0000209':
                     integrator_parameters['rtol'] = float(p['value'])
                 elif p['kisaoID'] == 'KISAO:0000211':
                     integrator_parameters['atol'] = float(p['value'])
-                elif p['kisaoID'] == 'KISAO:0000475':
-                    integrator_parameters['method'] = p['value']
                 elif p['kisaoID'] == 'KISAO:0000415':
                     integrator_parameters['nsteps'] = int(p['value'])
                 elif p['kisaoID'] == 'KISAO:0000467':
                     integrator_parameters['max_step'] = float(p['value'])
                 elif p['kisaoID'] == 'KISAO:0000485':
                     integrator_parameters['min_step'] = float(p['value'])
-                elif p['kisaoID'] == 'KISAO:0000484':
-                    integrator_parameters['order'] = int(p['value'])
-    elif algorithm['kisaoID'] == 'KISAO:0000088':
-        # LSODA
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        integrator_parameters = {}
-        for p in algorithm['listOfAlgorithmParameters']:
-            if p['kisaoID'] == 'KISAO:0000209':
-                integrator_parameters['rtol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000211':
-                integrator_parameters['atol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000415':
-                integrator_parameters['nsteps'] = int(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000467':
-                integrator_parameters['max_step'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000485':
-                integrator_parameters['min_step'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000219':
-                integrator_parameters['max_order_ns'] =int(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000220':
-                integrator_parameters['max_order_s'] = int(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000219':
+                    integrator_parameters['max_order_ns'] =int(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000220':
+                    integrator_parameters['max_order_s'] = int(p['value'])
     elif algorithm['kisaoID'] == 'KISAO:0000087':
         # dopri5
         method = KISAO_ALGORITHMS[algorithm['kisaoID']]
         integrator_parameters = {}
-        for p in algorithm['listOfAlgorithmParameters']:
-            if p['kisaoID'] == 'KISAO:0000209':
-                integrator_parameters['rtol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000211':
-                integrator_parameters['atol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000415':
-                integrator_parameters['nsteps'] = int(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000467':
-                integrator_parameters['max_step'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000541':
-                integrator_parameters['beta'] = float(p['value'])
+        if 'listOfAlgorithmParameters' in algorithm:
+            for p in algorithm['listOfAlgorithmParameters']:
+                if p['kisaoID'] == 'KISAO:0000209':
+                    integrator_parameters['rtol'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000211':
+                    integrator_parameters['atol'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000415':
+                    integrator_parameters['nsteps'] = int(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000467':
+                    integrator_parameters['max_step'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000541':
+                    integrator_parameters['beta'] = float(p['value'])
     elif algorithm['kisaoID'] == 'KISAO:0000436':
         # dop853
         method = KISAO_ALGORITHMS[algorithm['kisaoID']]
         integrator_parameters = {}
-        for p in algorithm['listOfAlgorithmParameters']:
-            if p['kisaoID'] == 'KISAO:0000209':
-                integrator_parameters['rtol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000211':
-                integrator_parameters['atol'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000415':
-                integrator_parameters['nsteps'] = int(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000467':
-                integrator_parameters['max_step'] = float(p['value'])
-            elif p['kisaoID'] == 'KISAO:0000541':
-                integrator_parameters['beta'] = float(p['value'])
+        if 'listOfAlgorithmParameters' in algorithm:
+            for p in algorithm['listOfAlgorithmParameters']:
+                if p['kisaoID'] == 'KISAO:0000209':
+                    integrator_parameters['rtol'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000211':
+                    integrator_parameters['atol'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000415':
+                    integrator_parameters['nsteps'] = int(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000467':
+                    integrator_parameters['max_step'] = float(p['value'])
+                elif p['kisaoID'] == 'KISAO:0000541':
+                    integrator_parameters['beta'] = float(p['value'])
     else:
         print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
         raise ValueError("The algorithm {} is not supported!".format(algorithm['kisaoID']))

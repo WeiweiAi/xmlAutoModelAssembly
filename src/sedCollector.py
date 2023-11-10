@@ -3,8 +3,8 @@ import os
 import pandas
 import tempfile
 import re
-from sedModel_changes import get_variable_info_CellML
-from simulator import  get_observables
+from .sedModel_changes import get_variable_info_CellML
+from .simulator import  get_observables
 from .sedEditor import get_dict_algorithm
 
 def get_variables_for_task(doc, task):
