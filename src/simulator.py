@@ -1,4 +1,9 @@
 from .solver import solve_euler, solve_scipy, algebra_evaluation, initialize_module
+from .sedEditor import get_dict_simulation
+from libcellml import AnalyserVariable
+from pathlib import PurePath
+import importlib.util
+import os
 
 """
 ====================
@@ -10,9 +15,13 @@ The module defines the following classes:
     * SimSettings - stores the simulation settings
 The module defines the following functions:
     * getSimSettingFromDict - get the simulation settings from the dictionary of the simulation
+    * getSimSettingFromSedSim - get the simulation settings from the sedSimulation
+    * load_module - load a module from a file.
     * sim_UniformTimeCourse - simulate the model with UniformTimeCourse setting
     * sim_TimeCourse - simulate the model with TimeCourse setting
     * get_KISAO_parameters - get the parameters of the KISAO algorithm
+    * get_externals - get the external variable function for the model.
+    * get_observables - get the observables information for the simulation.
 """
 
 # The supported methods of the integration
@@ -107,6 +116,63 @@ def getSimSettingFromDict(dict_simulation):
     
     return simSetting
 
+def getSimSettingFromSedSim(sedSimulation):
+    """Get the simulation settings from the sedSimulation.
+
+    Parameters
+    ----------
+    sedSimulation : SedSimulation
+        The sedSimulation object
+
+    Raises
+    ------
+    ValueError
+        If the dict_simulation is not valid
+        If the simulation type is not supported
+
+    Returns
+    -------
+    :obj:`SimSettings`: the simulation settings
+    """
+
+    try:
+        dict_simulation = get_dict_simulation(sedSimulation)
+        simSetting = getSimSettingFromDict(dict_simulation)
+    except ValueError as e:
+        raise ValueError(str(e)) from e
+    return simSetting
+       
+def load_module(full_path):
+    """ Load a module from a file.
+
+    Parameters
+    ----------
+    full_path : str
+        The full path to the file containing the module.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+        If the module cannot be loaded.
+
+    Returns
+    -------
+    object
+        The loaded module.    
+    """
+
+    if not os.path.isfile(full_path):
+        raise FileNotFoundError('Model source file `{}` does not exist.'.format(full_path))
+    
+    module_name = PurePath(full_path).stem
+    spec = importlib.util.spec_from_file_location(module_name, full_path)
+    if spec is None:
+        raise FileNotFoundError('Unable to load module `{}`.'.format(module_name))    
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
 
 def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable, current_state=None,parameters={}):
     """Simulate the model with UniformTimeCourse setting.
@@ -368,5 +434,296 @@ def get_KISAO_parameters(algorithm):
         raise ValueError("The algorithm {} is not supported!".format(algorithm['kisaoID']))
     
     return method, integrator_parameters
+class External_module:
+    """ Class to define the external module.
 
+    Attributes
+    ----------
+    param_indices: list
+        The indices of the variable in the generated python module.
+    param_vals: list
+        The values of the variables given by the external module .
 
+    Methods
+    -------
+    external_variable_algebraic(variables,index)
+        Define the external variable function for algebraic type model.
+    external_variable_ode(voi, states, rates, variables,index)
+        Define the external variable function for ode type model.  
+    
+    Notes
+    -----
+    This class only allows the model to take inputs, 
+    while the inputs do not depend on the model variables.
+        
+    """
+    def __init__(self, param_indices, param_vals):
+        """
+
+         Parameters
+         ----------
+         param_indices: list
+             The indices of the variable in the generated python module.
+         param_vals: list
+             The values of the variables given by the external module .
+             
+        """
+        self.param_vals = param_vals
+        self.param_indices = param_indices 
+
+    def external_variable_algebraic(self, variables,index):
+        return self.param_vals[self.param_indices.index(index)]
+
+    def external_variable_ode(self,voi, states, rates, variables,index):
+        return self.param_vals[self.param_indices.index(index)]
+          
+def get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values):
+    """ Get the external variable function for the model.
+
+    Parameters
+    ----------
+    mtype: str
+        The type of the model.
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    cellml_model: Model
+        The CellML model.
+    external_variables_info: dict
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}.
+    external_variables_values: list
+        The values of the external variables.
+    
+    Raises
+    ------
+    ValueError
+        If the number of external variables does not match the number of external variables values.
+        If the model type is not supported.
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    function
+        The external variable function for the model.
+    """
+    # specify external variables
+    try:
+        param_indices=_get_variable_indices(analyser, cellml_model,external_variables_info)
+    except ValueError as exception:
+        print(exception)
+        raise ValueError(exception)
+    
+    if len(param_indices)!=len(external_variables_values):
+        raise ValueError("The number of external variables does not match the number of external variables values!")
+
+    if len(param_indices)==0:
+        external_variable= None
+    else:
+        external_module=External_module(param_indices,external_variables_values)
+        if mtype=='algebraic':
+            external_variable=external_module.external_variable_algebraic
+        elif mtype=='ode':
+            external_variable=external_module.external_variable_ode
+        else:
+            raise ValueError("The model type {} is not supported!".format(mtype))
+       
+    return external_variable
+
+def get_observables(analyser, model, variables_info):
+    """
+    Get the observables information for the simulation
+    based on variables_info {id:{'component': , 'name': }}.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    model: Model
+        The CellML model.
+    variables_info: dict
+        The variables to be observed, 
+        in the format of {id:{'component': , 'name': }}.
+
+    Raises
+    ------
+    ValueError
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    dict
+        The observables of the simulation, 
+        in the format of {id:{'name': , 'component': , 'index': , 'type': }}.
+    """
+    observables = {}
+    for key,variable_info in variables_info.items():
+        try:
+            variable=_find_variable(model, variable_info['component'],variable_info['name'])
+        except ValueError as err:
+            print(str(err))
+            raise
+        
+        index, vtype=_get_index_type_for_equivalent_variable(analyser,variable)
+        if vtype != 'unknown':
+            observables[key]={'name':variable_info['name'],'component':variable_info['component'],'index':index,'type':vtype}
+        else:
+            print("Unable to find a required variable in the generated code")
+            raise ValueError("Unable to find a required variable in the generated code")
+        
+    return observables
+
+def _get_index_type_for_variable(analyser, variable):
+    """Get the index and type of a variable in the python module.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    variable: Variable
+        The CellML variable.
+
+    Returns
+    -------
+    tuple
+        (int, str)
+        The index and type of the variable.
+        If the variable is not found, the index is -1 and the type is 'unknown'.
+        The type can be 'algebraic', 'constant', 'computed_constant', 'external',
+        'state' or 'variable_of_integration'.
+    
+    """
+    analysedModel=analyser.model()
+    for i in range(analysedModel.variableCount()):
+        avar=analysedModel.variable(i)
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        
+    for i in range(analysedModel.stateCount()):
+        avar=analysedModel.state(i)
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        
+    avar=analysedModel.voi()
+    if avar:
+        var=avar.variable()
+        var_name=var.name()
+        component_name=var.parent().name()
+        if component_name==variable.parent().name() and var_name==variable.name():
+            return avar.index(), AnalyserVariable.typeAsString(avar.type())  
+          
+    return -1, 'unknown'
+
+def _get_index_type_for_equivalent_variable(analyser, variable):
+    """Get the index and type of a variable in a module 
+    by searching through equivalent variables.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    variable: Variable
+        The CellML variable.
+
+    Returns
+    -------
+    tuple
+        (int, str)
+        The index and type of the variable.
+        If the variable is not found, the index is -1 and the type is 'unknown'.        
+    """
+
+    index, vtype = _get_index_type_for_variable(analyser,variable)
+    if vtype != 'unknown':
+        return index, vtype
+    else:
+        for i in range(variable.equivalentVariableCount()):
+            eqv = variable.equivalentVariable(i)
+            index, vtype = _get_index_type_for_variable(analyser, eqv)
+            if vtype != 'unknown':
+                return index, vtype
+    return -1, 'unknown'
+
+def _get_variable_indices(analyser, model, variables_info):
+    """Get the indices of a list of variables in a model.
+    
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    model: Model
+        The CellML model.
+    variables_info: dict
+        The variables information in the format of {id:{'component': , 'name': }}.
+
+    Raises
+    ------
+    ValueError
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    list
+        The indices of the variables in the generated python module.
+
+    Notes
+    -----
+    The indices should be in the same order as the variables in the dictionary.
+    Hence, Python 3.6+ is required.
+    """
+    try:
+        observables=get_observables(analyser, model, variables_info)
+    except ValueError as err:
+        print(str(err))
+        raise 
+    indices=[]
+    for _,observable in observables.items():
+        indices.append(observable['index'])
+
+    return indices
+
+def _find_variable(model, component_name, variable_name):
+    """ Find a variable in a CellML model based on component name and variable name.
+    
+    Parameters
+    ----------
+    model: Model
+        The CellML model.
+    component_name: str
+        The name of the component.
+    variable_name: str
+        The name of the variable.
+    
+    Raises
+    ------
+    ValueError
+        If the variable is not found in the model.
+
+    Returns
+    -------
+    Variable
+        The CellML variable found in the model.
+    """
+
+    def _find_variable_component(component):
+        if component.name()==component_name:
+            for v in range(component.variableCount()):
+                if component.variable(v).name()==variable_name:
+                    return component.variable(v)            
+        if component.componentCount()>0:
+            for c in range(component.componentCount()):
+                variable=_find_variable_component(component.component(c))
+                if variable:
+                    return variable
+        return None
+    
+    for c in range(model.componentCount()):
+        variable=_find_variable_component(model.component(c))
+        if variable:
+            return variable
+        
+    raise ValueError("Unable to find the variable {} in the component {} of the model".format(variable_name,component_name))

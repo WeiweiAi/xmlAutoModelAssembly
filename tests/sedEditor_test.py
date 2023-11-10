@@ -1,9 +1,12 @@
 import sys
     # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(0, '..')
-from src.sedDocEditor import create_sedDocment_task,create_sedDocment_task_pe, write_sedml,validate_sedml
+from src.sedDocEditor import create_dict_sedDocment,add_sedTask2dict, add_peTask2dict, write_sedml,validate_sedml
+from src.sedEditor import create_sedDocment
 
 def test_task():
+    dict_sedDocument=create_dict_sedDocment()
+    model_name='SLCT3_BG_test'
     model_source='SLCT3_BG_test.cellml'
     changes={'id':{'component':'SLCT3_BG_io','name':'q_Ai','newValue':'200'}}
     outputs={'v_Ai':{'component':'SLCT3_BG_test','name':'v_Ai','scale':1.0},
@@ -15,13 +18,19 @@ def test_task():
    # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
    # simSetting={'type':'SteadyState','algorithm':dict_algorithm}
     
-    doc=create_sedDocment_task(model_source,changes,simSetting,outputs)
+    add_sedTask2dict(dict_sedDocument, model_name, model_source,changes,simSetting,outputs)
+    try:
+        doc=create_sedDocment(dict_sedDocument)
+    except ValueError as err:
+        print(err)
     filename='./csv/SLCT3_BG_test.sedml'
     write_sedml(doc,filename)
     print(validate_sedml(filename))
    
 
-def test_task_pe():    
+def test_task_pe():  
+    dict_sedDocument=create_dict_sedDocment()
+    model_name='SLCT3_BG_test'  
     model_source='SLCT3_BG_test.cellml'
     #
     component_change='SLCT3_BG_io'
@@ -110,10 +119,14 @@ def test_task_pe():
                           'parameter2':{'component':'SLCT3_BG_param','name':'kappa_re2','lowerBound':0.0,'upperBound':10.0,'initialValue':0.1,'scale':'linear','experimentReferences':[fitId]}
                           }         
 
-    doc=create_sedDocment_task_pe(model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
+    doc=add_peTask2dict(dict_sedDocument, model_name, model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
+    try:
+        doc=create_sedDocment(dict_sedDocument)
+    except ValueError as err:
+        print(err)
     filename='./csv/test_pe.sedml'
     write_sedml(doc,filename)
     print(validate_sedml(filename))
 
-test_task()
+#test_task()
 test_task_pe()

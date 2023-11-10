@@ -1,6 +1,7 @@
 import os
 import numpy
 import pandas
+from math4sedml import calc_data_generator_results
 
 def writeReport(report, results, base_path, rel_path, format='csv'):
     rel_path = os.path.relpath(rel_path, '.')
@@ -166,3 +167,147 @@ def pad_arrays_to_consistent_shapes(arrays):
         padded_arrays.append(array)
 
     return padded_arrays
+
+def exec_report(report, variable_results, base_out_path, rel_out_path, formats, task):
+    """ Execute a report, generating the data sets which are available
+
+    Args:
+        report (:obj:`Report`): report
+        variable_results (:obj:`VariableResults`): result of each data generator
+        base_out_path (:obj:`str`): path to store the outputs
+
+            * CSV: directory in which to save outputs to files
+              ``{base_out_path}/{rel_out_path}/{report.getId()}.csv``
+
+        rel_out_path (:obj:`str`, optional): path relative to :obj:`base_out_path` to store the outputs
+        formats (:obj:`list` of :obj:`ReportFormat`, optional): report format (e.g., csv)
+        task (:obj:`SedTask`): task
+
+    Returns:
+        :obj:`tuple`:
+
+            * :obj:`dict`: results of the data sets, format is {data_set.id: numpy.ndarray}
+            * :obj:`Status`: status
+            * :obj:`Exception`: exception for failure
+            * :obj:`bool`: whether :obj:`task` contribute a variable to the report
+    Side effects:
+        * writes the results of the report to a file
+    """
+    # calculate data generators
+    data_generators_ids = set()
+    doc=report.getSedDocument()
+    for data_set in report.getListOfDataSets ():
+        data_generators_ids.add(data_set.getDataReference ())
+    
+    data_generators = [doc.getDataGenerator(data_generator_id) for data_generator_id in data_generators_ids]
+
+    data_gen_results, data_gen_statuses, data_gen_exceptions, task_contributes_to_report = calc_data_generators_results(
+        data_generators, variable_results, task, make_shapes_consistent=True)
+
+    # collect data sets
+    data_set_results = {}
+
+    running = False
+    succeeded = True
+    failed = False
+
+    for data_set in report.getListOfDataSets ():
+        data_gen_res = data_gen_results[data_set.getDataReference ()]
+        data_set_results[data_set.getId()] = data_gen_res
+
+        data_gen_status = data_gen_statuses[data_set.getDataReference ()]
+        if data_gen_status == 'FAILED':
+            failed = True
+        if data_gen_status == 'SUCCEEDED':
+            running = True
+        else:
+            succeeded = False
+
+    for format in formats:
+        writeReport(report, data_set_results, base_out_path, os.path.join(rel_out_path, report.getId()) if rel_out_path else report.getId(), format)
+
+    if failed:
+        status = 'FAILED'
+
+    elif running:
+        if succeeded:
+            status = 'SUCCEEDED'
+        else:
+            status = 'RUNNING'	
+
+    else:
+        status = 'QUEUED'
+
+    return data_set_results, status, data_gen_exceptions, task_contributes_to_report
+
+def calc_data_generators_results(data_generators, variable_results,task, make_shapes_consistent=True):
+    """ Calculator the values of a list of data generators
+
+    Args:
+        data_generators (:obj:`list` of :obj:`SedDataGenerator`): SED task
+        variable_results (:obj:`VariableResults`): results of the SED variables involved in the data generators
+        task (:obj:`SedTask`): SED task
+        make_shapes_consistent (:obj:`bool`, optional): where to make the shapes of the data generators consistent
+            (e.g., for concatenation into a table for a report)
+
+    Returns:
+        :obj:`tuple`:
+
+            * :obj:`dict`: values of the data generators, format is {data_generator.id: numpy.ndarray}
+            * :obj:`dict` of :obj:`str` to :obj:`Status`: dictionary that maps the id of each data generator to its status
+            * :obj:`Exception`: exception for failures
+            * :obj:`bool`: where the task contributes to any of the data generators
+    """
+    task_contributes_to_data_generators = False
+    statuses = {}
+    exceptions = []
+    results = {}
+
+    for data_gen in data_generators:
+        vars_available = True
+        vars_failed = False
+        for variable in data_gen.getListOfVariables():
+            if variable.getTaskReference () == task.getId():
+                task_contributes_to_data_generators = True
+            if variable.getId() in variable_results:
+                if variable_results.get(variable.getId(), None) is None:
+                    vars_available = False
+                    vars_failed = True
+            else:
+                vars_available = False
+
+        if vars_failed:
+            status = 'FAILED'
+            msg = 'Data generator {} cannot be calculated because its variables were not successfully produced.'.format(data_gen.getId())
+            exceptions.append(ValueError(msg))
+            result = None
+
+        elif vars_available:
+            try:
+                result = calc_data_generator_results(data_gen, variable_results)
+                status = 'SUCCEEDED'
+            except Exception as exception:
+                result = None
+                exceptions.append(exception)
+                status = 'FAILED'
+
+        else:
+            status = 'QUEUED'	
+            result = None
+
+        statuses[data_gen.getId()] = status
+        results[data_gen.getId()] = result
+
+    if make_shapes_consistent:
+        arrays = results.values()
+        consistent_arrays = pad_arrays_to_consistent_shapes(arrays)
+        for data_gen_id, result in zip(results.keys(), consistent_arrays):
+            results[data_gen_id] = result
+
+    if exceptions:
+        exception = ValueError('Some generators could not be produced:\n  - {}'.format(
+            '\n  '.join(str(exception) for exception in exceptions)))
+    else:
+        exception = None
+
+    return results, statuses, exception, task_contributes_to_data_generators

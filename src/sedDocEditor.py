@@ -1,4 +1,4 @@
-from .sedEditor import create_sedDocment, get_dict_sedDocument
+from .sedEditor import get_dict_sedDocument
 import libsedml
 from libsedml import writeSedMLToFile, readSedMLFromFile
 import os
@@ -135,9 +135,25 @@ def validate_sedml(file_name):
     else:
         return False 
 
-def create_sedDocment_task(model_source,changes,simSetting,outputs):
+def create_dict_sedDocment():
     """
-    Create a SED-ML document with user-defined information.
+    Create an empty SED-ML document dictionary.
+
+    Returns
+    -------
+    dict
+        The dictionary format:
+        {'listOfDataDescriptions':[],'listOfModels':[],'listOfSimulations':[],'listOfTasks':[],'listOfDataGenerators':[],'listOfReports':[]}
+    """
+
+    dict_sedDocument={'listOfDataDescriptions':[],'listOfModels':[],'listOfSimulations':[],'listOfTasks':[],'listOfDataGenerators':[],'listOfReports':[]}
+    
+    return dict_sedDocument
+
+
+def add_sedTask2dict(dict_sedDocument, model_name, model_source,changes,simSetting,outputs):
+    """
+    Add user-defined task information to the SED-ML document dictionary.
     Assume single model, single simulation, single task, single report.
     The task type is 'Task'.
     The output type is 'Report'.
@@ -149,6 +165,11 @@ def create_sedDocment_task(model_source,changes,simSetting,outputs):
    
     Parameters
     ----------
+    dict_sedDocument: dict
+        The dictionary format:
+        {'listOfDataDescriptions':[],'listOfModels':[],'listOfSimulations':[],'listOfTasks':[],'listOfDataGenerators':[],'listOfReports':[]}
+    model_name: str
+        The id of the model.
     model_source: str
         The source of the model, e.g., '../tests/csv/test_model_noExt.cellml'
     changes: dict
@@ -168,28 +189,19 @@ def create_sedDocment_task(model_source,changes,simSetting,outputs):
         The dictionary format:
         {'id':{'component':str,'name':str,'scale':float}}
             
-    Raises
-    ------
-    ValueError
-        If the SED-ML document is not valid (more strict than libsedml).
-
-    Returns
-    -------
-    SedDocument
-        An instance of SedDocument.
-        The version and level of the SED-ML document are set to 1 and 4, respectively.
+    Side effects
+    ------------
+    The SED-ML document dictionary is updated.
     """
 
-    dict_sedDocument={}
     # model
-    model_name = PurePath(model_source).stem 
     dict_model={'id':model_name,'source':model_source,'language':CELLML_URN,'listOfChanges':[]}
 
     # changes
     for change in changes.values():
         dict_change_Attribute = {'target': target_component_variable_initial(change['component'], change['name']),'newValue': change['newValue']} 
         dict_model['listOfChanges'].append(dict_change_Attribute)
-    dict_sedDocument['listOfModels']=[dict_model]
+    dict_sedDocument['listOfModels'].append(dict_model)
 
     # simulation
     sim_id = 'sim_'+ model_name
@@ -201,15 +213,14 @@ def create_sedDocment_task(model_source,changes,simSetting,outputs):
     elif simSetting['type'] == 'SteadyState':
         dict_simulation={'id':sim_id, 'type':'SteadyState', 'algorithm':simSetting['algorithm']}
 
-    dict_sedDocument['listOfSimulations']= [dict_simulation]
+    dict_sedDocument['listOfSimulations'].append(dict_simulation)
     
     # task
     task_id = 'task_'+ model_name
     dict_task={'id':task_id,'type':'Task', 'modelReference':model_name,'simulationReference':sim_id}
-    dict_sedDocument['listOfTasks']= [dict_task]
+    dict_sedDocument['listOfTasks'].append(dict_task)
 
     # output
-    dict_sedDocument['listOfDataGenerators']= []
     report_id = 'report_'+ task_id
     dict_report={'id':report_id,'name':report_id,'listOfDataSets':[]}
 
@@ -226,24 +237,24 @@ def create_sedDocment_task(model_source,changes,simSetting,outputs):
         dict_dataSet={'id':dataSet_id,'label':id,'dataReference':dataGenerator_id}
         dict_report['listOfDataSets'].append(dict_dataSet)
 
-    dict_sedDocument['listOfReports']= [dict_report]
-    # create the SED-ML document
-    try:
-        doc=create_sedDocment(dict_sedDocument)
-    except ValueError as e:
-        raise e
-    
-    return doc
+    dict_sedDocument['listOfReports'].append(dict_report)
+       
+    return 
 
-def create_sedDocment_task_pe(model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt):
+def add_peTask2dict(dict_sedDocument, model_name, model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt):
     """
-    Create a SED-ML document with user-defined information.
+    Add user-defined parameterization task information to the SED-ML document dictionary.
     Assume single model, single ParameterEstimationTask, single report.
     The task type is 'ParameterEstimationTask'.
     The output type is 'Report'.
 
     Parameters
     ----------
+    dict_sedDocument: dict
+        The dictionary format:
+        {'listOfDataDescriptions':[],'listOfModels':[],'listOfSimulations':[],'listOfTasks':[],'listOfDataGenerators':[],'listOfReports':[]}
+    model_name: str
+        The id of the model.
     model_source: str
         The source of the model, e.g., '../tests/csv/test_model_noExt.cellml'
     changes: dict
@@ -278,46 +289,31 @@ def create_sedDocment_task_pe(model_source,changes,experimentData_files, adjusta
         The dictionary format:
         {'kisaoID':str,'name':str,'listOfAlgorithmParameters':[dict_algorithmParameter]}
 
-    Raises
-    ------
-    ValueError
-        If the SED-ML document is not valid (more strict than libsedml).
-
-    Returns
-    -------
-    SedDocument
-        An instance of SedDocument.
-        The version and level of the SED-ML document are set to 1 and 4, respectively.    
+    Side effects
+    ------------
+    The SED-ML document dictionary is updated.    
     """
-
-    dict_sedDocument={}
     # model
-    model_name = PurePath(model_source).stem
     dict_model={'id':model_name,'source':model_source,'language':CELLML_URN,'listOfChanges':[]}
     for change in changes.values():
         dict_change_Attribute = {'target': target_component_variable_initial(change['component'], change['name']),'newValue': change['newValue']} 
         dict_model['listOfChanges'].append(dict_change_Attribute)
-    dict_sedDocument['listOfModels']=[dict_model] 
-   
+    dict_sedDocument['listOfModels'].append(dict_model)   
     # pe task holder
     task_id = 'pe_task_'+ model_name
     dict_parameterEstimationTask= {'id':task_id,'type':'ParameterEstimationTask','algorithm':dict_algorithm_opt,'objective':{'type':'leastSquare'},
-                       'listOfAdjustableParameters':[],'listOfFitExperiments':[]} 
-    
+                       'listOfAdjustableParameters':[],'listOfFitExperiments':[]}    
     # report holder
     report_id = 'report_'+ task_id
     dict_report={'id':report_id,'name':report_id,'listOfDataSets':[]}
-
     # adjustableParameters
     for id, adjustableParameter in adjustableParameters.items():
         dict_bounds={'lowerBound':adjustableParameter['lowerBound'],'upperBound':adjustableParameter['upperBound'],'scale':'linear'}
         dict_adjustableParameter = {'id':id,'modelReference':model_name,'target':target_component_variable_initial(adjustableParameter['component'], adjustableParameter['name']),
                                                  'initialValue':adjustableParameter['initialValue'],'bounds':dict_bounds,'listOfExperimentReferences':adjustableParameter['experimentReferences']}
         
-        dict_parameterEstimationTask['listOfAdjustableParameters'].append(dict_adjustableParameter)
-    
+        dict_parameterEstimationTask['listOfAdjustableParameters'].append(dict_adjustableParameter)  
     # Describe the experimental data
-    dict_sedDocument['listOfDataDescriptions']= []
     # Fixed dimension description: for 2D csv, the column headers are string, the values are double
     dict_dimDescription={'id':'Index','name':'Index','indexType':'integer','dim2':{'id':'ColumnIds','name':'ColumnIds','indexType':'string','valueType':'double'}}
 
@@ -337,19 +333,16 @@ def create_sedDocment_task_pe(model_source,changes,experimentData_files, adjusta
                 dict_dataDescription['listOfDataSources'].append(dict_dataSource_initial)
         if 'observables' in experimentData_file:
             for dataSourceId, observe in experimentData_file['observables'].items():
-                dict_slice_observe={'reference':'Index','value':observe['column_name'],'startIndex':observe['startIndex'],'endIndex':observe['endIndex']}
+                dict_slice_observe={'reference':'ColumnIds','value':observe['column_name'],'startIndex':observe['startIndex'],'endIndex':observe['endIndex']}
                 dict_dataSource_observe={'id':dataSourceId,'listOfSlices':[dict_slice_observe]}
                 dict_dataDescription['listOfDataSources'].append(dict_dataSource_observe)     
         if 'pointWeights' in experimentData_file:
             for dataSourceId, pointWeight in experimentData_file['pointWeights'].items():
-                dict_slice_pointWeight={'reference':'Index','value':pointWeight['column_name'],'startIndex':pointWeight['startIndex'],'endIndex':pointWeight['endIndex']}
+                dict_slice_pointWeight={'reference':'ColumnIds','value':pointWeight['column_name'],'startIndex':pointWeight['startIndex'],'endIndex':pointWeight['endIndex']}
                 dict_dataSource_pointWeight={'id':dataSourceId,'listOfSlices':[dict_slice_pointWeight]}
                 dict_dataDescription['listOfDataSources'].append(dict_dataSource_pointWeight)
        
         dict_sedDocument['listOfDataDescriptions'].append(dict_dataDescription)
-
-    dict_sedDocument['listOfDataGenerators']= []
-
     # fitExperiments
     for id, fitExperiment in fitExperiments.items():
         dict_fitExperiment={'id':id,'type':fitExperiment['type'],'algorithm':fitExperiment['algorithm'],'listOfFitMappings':[]}
@@ -407,7 +400,6 @@ def create_sedDocment_task_pe(model_source,changes,experimentData_files, adjusta
         dict_parameterEstimationTask['listOfFitExperiments'].append(dict_fitExperiment)
 
     # report the objective value and optimal values of the adjustable parameters
-
     var_obj='var_obj'
     dg_obj='dg_obj'
     dataSet_obj='dataset_obj' 
@@ -426,10 +418,7 @@ def create_sedDocment_task_pe(model_source,changes,experimentData_files, adjusta
     dict_dataSet_adjustableParameters={'id':dataSet_optimal,'label':'ADJ','dataReference':dg_optimal}
     dict_report['listOfDataSets'].append(dict_dataSet_adjustableParameters)
 
-    dict_sedDocument['listOfTasks']= [dict_parameterEstimationTask]
-    dict_sedDocument['listOfReports']= [dict_report]
-    try:
-        doc=create_sedDocment(dict_sedDocument)
-    except ValueError as e:
-        raise e
-    return doc
+    dict_sedDocument['listOfTasks'].append(dict_parameterEstimationTask)
+    dict_sedDocument['listOfReports'].append(dict_report)
+
+    return
