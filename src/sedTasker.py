@@ -14,8 +14,11 @@ import numpy
 
 
 
-def exec_task(doc,task,working_dir,model_base_dir,external_variables_info={},external_variables_values=[],current_state=None):
+def exec_task(doc,task,working_dir,external_variables_info={},external_variables_values=[],current_state=None):
     """ Execute a SedTask.
+    The model is assumed to be in CellML format.
+    The simulation type supported are UniformTimeCourse, OneStep and SteadyState.#TODO: add support for OneStep and SteadyState
+    The ode solver supported are listed in KISAO_ALGORITHMS (.simulator.py)
 
     Parameters
     ----------
@@ -25,14 +28,17 @@ def exec_task(doc,task,working_dir,model_base_dir,external_variables_info={},ext
         The task to be executed.
     working_dir: str
         working directory of the SED document (path relative to which models are located)
-    model_base_dir: str
-        The full path to the directory that import URLs (in the xml model) are relative to.
     external_variables_info: dict, optional
         The external variables to be specified, in the format of {id:{'component': , 'name': }}
     external_variables_values: list, optional
         The values of the external variables to be specified [value1, value2, ...]
     current_state: tuple, optional
         The format is (voi, states, rates, variables, current_index, sed_results)
+    
+    Raises
+    ------
+    RuntimeError
+        If any operation failed.
 
     Returns
     -------
@@ -61,12 +67,13 @@ def exec_task(doc,task,working_dir,model_base_dir,external_variables_info={},ext
         # cleanup modified model sources
         os.remove(temp_model_source)
         if cellml_model:
+            model_base_dir=os.path.dirname(temp_model.getSource())
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
             if analyser:
                 mtype=get_mtype(analyser)
                 external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
                 # write Python code to a temporary file
-                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True)
+                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
                 writePythonCode(analyser, full_path)
                 module=load_module(full_path)
                 os.close(tempfile_py)
@@ -180,7 +187,37 @@ def report_task(doc,task, variable_results, base_out_path, rel_out_path, report_
 
     return report_results
 
-def exec_parameterEstimationTask( doc,task, working_dir, model_base_dir,external_variables_info=[],external_variables_values=[]):
+def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info={},external_variables_values=[]):
+    """
+    Execute a SedTask of type ParameterEstimationTask.
+    The model is assumed to be in CellML format.
+    The simulation type supported are 'steadyState' and 'timeCourse'.#TODO: add support for steadyState
+    The ode solver supported are listed in KISAO_ALGORITHMS (.simulator.py)
+    The optimisation algorithm supported are listed in KISAO_ALGORITHMS (.optimiser.py)
+
+    Parameters
+    ----------
+    doc: :obj:`SedDocument`
+        An instance of SedDocument
+    task: :obj:`SedParameterEstimationTask `
+        The task to be executed.
+    working_dir: str
+        working directory of the SED document (path relative to which models are located)
+    external_variables_info: dict, optional
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}
+    external_variables_values: list, optional
+        The values of the external variables to be specified [value1, value2, ...]
+
+    Raises
+    ------
+    RuntimeError
+        If any operation failed.
+
+    Returns
+    -------
+    res: scipy.optimize.OptimizeResult
+
+    """ 	
 
     # get the model
     original_models = get_models_referenced_by_task(doc,task)
@@ -199,19 +236,29 @@ def exec_parameterEstimationTask( doc,task, working_dir, model_base_dir,external
         # cleanup modified model sources
         os.remove(temp_model_source)
         if cellml_model:
-            adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(doc,model_etree,task)
-            for key,adjustableParameter_info in adjustableParameters_info.items():
-                external_variables_info.append(adjustableParameter_info)
+            model_base_dir=os.path.dirname(temp_model.getSource())
+            adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
+            bounds=Bounds(lowerBound ,upperBound)
+            external_variables_info.update(adjustableParameters_info)
+            external_variables_values.extend(initial_value)            
 
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
             if analyser:
                 mtype=get_mtype(analyser)
                 # write Python code to a temporary file
-                _, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True)
+                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
                 writePythonCode(analyser, full_path)
                 module=load_module(full_path)
+                os.close(tempfile_py)
                 # and delete temporary file
                 os.remove(full_path)
+                # get optimisation settings and fit experiments
+                dfDict={}
+                for dataDescription in doc.getListOfDataDescriptions() :
+                    dfDict.update({dataDescription.getId():get_df_from_dataDescription(dataDescription, working_dir)})
+                dict_algorithm=get_dict_algorithm(task.getAlgorithm())
+                method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
+                fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
 
     except (ValueError,FileNotFoundError) as exception:
         print(exception)
@@ -224,19 +271,14 @@ def exec_parameterEstimationTask( doc,task, working_dir, model_base_dir,external
         print('Model analysis failed!',issues)
         raise RuntimeError('Model analysis failed!')  
     
-    dict_algorithm=get_dict_algorithm(task.getAlgorithm())
-    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
-
-    dfDict={}
-    for dataDescription in doc.getListOfDataDescriptions() :
-        dfDict.update({dataDescription.getId():get_df_from_dataDescription(dataDescription, working_dir)})
+    if 'tol' in opt_parameters:
+        tol=opt_parameters['tol']
+    else:
+        tol=None
     
-    fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
-    
-    bounds=Bounds(lowerBound ,upperBound)
-
-    res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
-                 method=method,bounds=bounds, options=opt_parameters)
+    res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
+                                                          external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
+                 method=method,bounds=bounds, tol=tol, options=opt_parameters)
 
     return res
 

@@ -225,9 +225,9 @@ def add_sedTask2dict(dict_sedDocument, model_name, model_source,changes,simSetti
 
     for id,output in outputs.items():
         dict_variable={'id':id,'target':target_component_variable(output['component'], output['name']),'modelReference':model_name,'taskReference':task_id}
+        dataGenerator_id = 'dg_'+ id
         if 'scale' in output:
-            dict_parameter={'id':'scale','value':output['scale']}
-            dataGenerator_id = 'dg_'+ id
+            dict_parameter={'id':'scale','value':output['scale']}           
             dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':id+'*scale','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
         else:
             dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':id,'listOfVariables':[dict_variable]}

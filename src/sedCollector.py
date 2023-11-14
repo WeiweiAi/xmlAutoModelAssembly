@@ -122,7 +122,7 @@ def get_models_referenced_by_task(doc,task):
     
     Raises
     ------
-    NotImplementedError
+    ValueError
         If the task is not of type SedTask or SedRepeatedTask or SedParameterEstimationTask
         
     Returns
@@ -167,7 +167,7 @@ def get_models_referenced_by_task(doc,task):
         sedModels=[doc.getModel(modelReference) for modelReference in models]
         return sedModels        
     else:
-        raise NotImplementedError('Tasks of type `{}` are not supported.'.format(task.getTypeCode ()))
+        raise ValueError('Tasks of type `{}` are not supported.'.format(task.getTypeCode ()))
     
 def get_models_referenced_by_range(task,range):
     """ Get the models referenced by a range
@@ -249,7 +249,7 @@ def get_df_from_dataDescription(dataDescription, working_dir):
         try:
             response.raise_for_status()
         except Exception:
-            raise ValueError('Model could not be downloaded from `{}`.'.format(source))
+            raise FileNotFoundError('Model could not be downloaded from `{}`.'.format(source))
 
         temp_file, temp_data_source = tempfile.mkstemp()
         os.close(temp_file)
@@ -374,7 +374,31 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
                     else:
                         raise ValueError('Data source `{}` is not defined.'.format(dataSourceID))
 
-def get_adjustableParameters(doc,model_etree,task):
+def get_adjustableParameters(model_etree,task):
+    """
+    Return a tuple containing adjustable parameter information.
+    Assume the model is a CellML model.
+    
+    Parameters
+    ----------
+    model_etree: :obj:`lxml.etree._ElementTree`
+        An instance of lxml.etree._ElementTree
+    task: :obj:`SedParameterEstimationTask`
+
+    Raises
+    ------
+    ValueError
+
+    Returns
+    -------
+    tuple
+        A tuple containing adjustable parameter information
+        adjustableParameters_info: dict, {index: {'component':component,'name':name}}
+        experimentReferences: dict, {index: [experimentId]}
+        lowerBound: list, [lowerBound]
+        upperBound: list, [upperBound]
+        initial_value: list, [initial_value]  
+    """
     adjustableParameters_info={}
     experimentReferences={}
     lowerBound=[]
@@ -387,7 +411,7 @@ def get_adjustableParameters(doc,model_etree,task):
         except ValueError as exception:
             raise exception
         for key,variable_info in variables_info.items(): # should be only one variable
-            adjustableParameters_info[i]=(variable_info['component'],variable_info['name'])
+            adjustableParameters_info[key]={'component':variable_info['component'],'name': variable_info['name']}
 
         bonds=adjustableParameter.getBounds()
         lowerBound.append(bonds.getLowerBound ())
@@ -408,6 +432,44 @@ def get_adjustableParameters(doc,model_etree,task):
 
 
 def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
+    """
+    Return a dictionary containing fit experiment information.
+    Assume the model is a CellML model.
+    The variables in experiment conditions are set to be parameters.
+
+    Parameters
+    ----------
+    doc: :obj:`SedDocument`
+        An instance of SedDocument
+    task: :obj:`SedParameterEstimationTask`
+    analyser: Analyser
+        The Analyser instance of the cellml model
+    cellml_model: Model
+        The CellML model
+    model_etree: :obj:`lxml.etree._ElementTree`
+        An instance of lxml.etree._ElementTree
+    dfDict: :obj:`dict` of :obj:`pandas.DataFrame`
+
+    Raises
+    ------
+    ValueError
+
+    Returns
+    -------
+    dict
+        A dictionary containing fit experiment information
+        fitExperiments: dict, {experimentId: {'type':type,'algorithm':algorithm,'tspan':tspan,'parameters':parameters,'fitness_info':fitness_info}}
+        type: str, 'steadyState' or 'timeCourse'
+        algorithm: {'kisaoID': , 'name': , 'listOfAlgorithmParameters': [{'kisaoID': , 'name': , 'value': }]}
+        tspan: list, [t0,t1]
+        parameters: dict, The format is {id:{'name':'variable name','component':'component name',
+        'type':'state','value':value,'index':index}}
+        fitness_info: tuple, (observables_info,observables_weight,observables_exp)
+        observables_info: dict, {observableId: {'component':component,'name':name,'index':index,'type':type}}
+        observables_weight: dict, {observableId: weight}, where weight is numpy.ndarray.
+        observables_exp: dict, {observableId: observable_exp}, where observable_exp is numpy.ndarray.
+
+    """
     fitExperiments={}
     for fitExperiment in task.getListOfFitExperiments():
         if fitExperiment.getTypeAsString ()=='steadyState':
@@ -415,11 +477,14 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
         elif fitExperiment.getTypeAsString ()=='timeCourse':
             simulation_type='timeCourse'
         else:
-            raise NotImplementedError('Experiment type {} is not supported!'.format(fitExperiment.getTypeAsString ()))
+            raise ValueError('Experiment type {} is not supported!'.format(fitExperiment.getTypeAsString ()))
         fitExperiments[fitExperiment.getId()]={}
         fitExperiments[fitExperiment.getId()]['type']=simulation_type
         sed_algorithm = fitExperiment.getAlgorithm()
-        fitExperiments[fitExperiment.getId()]['algorithm']=get_dict_algorithm(sed_algorithm)
+        try:
+            fitExperiments[fitExperiment.getId()]['algorithm']=get_dict_algorithm(sed_algorithm)
+        except ValueError as exception:
+            raise exception
         fitExperiments[fitExperiment.getId()]['tspan']=[]
         fitExperiments[fitExperiment.getId()]['parameters']={}
         observables_exp={}
@@ -428,7 +493,10 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
 
         for fitMapping in fitExperiment.getListOfFitMappings ():
             if fitMapping.getTypeAsString ()=='time':
-                tspan=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                try:
+                    tspan=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                except ValueError as exception:
+                    raise exception
                 # should be 1D array
                 if tspan.ndim>1:
                     raise ValueError('The time course {} is not 1D array!'.format(fitMapping.getDataSource()))
@@ -436,7 +504,10 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     fitExperiments[fitExperiment.getId()]['tspan']=tspan
 
             elif fitMapping.getTypeAsString ()=='experimentalCondition':
-                initial_value_=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                try:
+                    initial_value_=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                except ValueError as exception:
+                    raise exception
                 if initial_value_.ndim>1:
                     raise ValueError('The experimental condition {} is not 1D array!'.format(fitMapping.getDataSource()))
                 elif len(initial_value_)==1:
@@ -450,20 +521,19 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))
                 else:
                     try:
-                        parameters_info = get_variable_info_CellML(sedVars,model_etree)
-                    except ValueError as exception:
-                        raise exception
-                    try:
-                        observables=get_observables(analyser, cellml_model, parameters_info)
+                        parameter_info = get_variable_info_CellML(sedVars,model_etree)
+                        parameter=get_observables(analyser, cellml_model, parameter_info)
                     except ValueError as exception:
                         raise exception                    
-                    fitExperiments[fitExperiment.getId()]['parameters'].update(observables)
+                    fitExperiments[fitExperiment.getId()]['parameters'].update(parameter)
                     for sedVar in sedVars:
                         fitExperiments[fitExperiment.getId()]['parameters'][sedVar.getId()]['value']=initial_value                                       
 
             elif fitMapping.getTypeAsString ()=='observable':
-
-                observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                try:
+                    observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
+                except ValueError as exception:
+                    raise exception
                 if observable_exp.ndim>1:
                     raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))
                 
@@ -474,22 +544,22 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))
                 else:
                     try:
-                        parameters_info = get_variable_info_CellML(sedVars,model_etree)
-                    except ValueError as exception:
-                        raise exception
-                    try:
-                        observables=get_observables(analyser, cellml_model, parameters_info)
+                        observable_info = get_variable_info_CellML(sedVars,model_etree)
+                        observable=get_observables(analyser, cellml_model, observable_info)
                     except ValueError as exception:
                         raise exception  
                                       
-                    observables_info.update(observables)
-                key=list(observables.keys())[0]
+                    observables_info.update(observable)
+                key=list(observable.keys())[0]
 
                 if fitMapping.isSetWeight():
                     weight=fitMapping.getWeight()
                     observables_weight.update({key:weight})
                 elif fitMapping.isSetPointWeight ():
-                    pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
+                    try:
+                        pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
+                    except ValueError as exception:
+                        raise exception
                     if pointWeight.ndim>1:
                         raise ValueError('The point weight {} is not 1D array!'.format(fitMapping.getPointWeight()))
                     else:
@@ -504,7 +574,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                 observables_exp.update({key:observable_exp})
 
             else:
-                raise NotImplementedError('Fit mapping type {} is not supported!'.format(fitMapping.getTypeAsString ()))
+                raise ValueError('Fit mapping type {} is not supported!'.format(fitMapping.getTypeAsString ()))
             
         fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp) 
 

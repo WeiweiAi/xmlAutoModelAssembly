@@ -4,6 +4,8 @@ from scipy.optimize import minimize, Bounds, LinearConstraint
 # https://docs.scipy.org/doc/scipy/reference/optimize.html
 SCIPY_OPTIMIZE_LOCAL = ['Nelder-Mead','Powell','CG','BFGS','Newton-CG','L-BFGS-B','TNC','COBYLA','SLSQP','trust-constr','dogleg','trust-ncg','trust-exact','trust-krylov']
 KISAO_ALGORITHMS = {'KISAO:0000514': 'Nelder-Mead',
+                    'KISAO:0000472': 'global optimization algorithm',
+                    'KISAO:0000471': 'local optimization algorithm',
                     }
 def get_KISAO_parameters_opt(algorithm):
     """Get the parameters of the KISAO algorithm.
@@ -15,14 +17,16 @@ def get_KISAO_parameters_opt(algorithm):
             * :obj:`str`: the method of the simulation
             * :obj:`dict`: the parameters of the integrator, the format is {parameter: value}
     """
-    if algorithm['kisaoID'] == 'KISAO:0000514':
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        opt_parameters = {}
+    method = KISAO_ALGORITHMS[algorithm['kisaoID']]
+    opt_parameters = {}
+    if algorithm['kisaoID'] == 'KISAO:0000514':        
         for p in algorithm['listOfAlgorithmParameters']:
             if p['kisaoID'] == 'KISAO:0000211':
                 opt_parameters['xatol'] = float(p['value'])
             elif p['kisaoID'] == 'KISAO:0000486':
                 opt_parameters['maxiter'] = float(p['value'])
+            elif p['kisaoID'] == 'KISAO:0000597':
+                opt_parameters['tol'] = float(p['value'])
     else:
         print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
         return None, None

@@ -122,6 +122,8 @@ def get_variable_info_CellML(task_variables,model_etree):
     Args:
         task_variables (:obj:`list` of :obj:`SedVariable`): variables of a task
         model_etree (:obj:`etree._Element`): model encoded in XML
+    Raises:
+        :obj:`ValueError`: if a variable is not found
     Returns:
         :obj:`dict`: information about the variables in the format {variable.id: {'name': variable name, 'component': component name}}
     """
@@ -178,7 +180,7 @@ def resolve_model(model, sed_doc, working_dir):
             except Exception:
                 raise ValueError('Model `{}` could not be downloaded from BioModels.'.format(biomodels_id))
 
-            temp_file, temp_model_source = tempfile.mkstemp()
+            temp_file, temp_model_source = tempfile.mkstemp(dir=os.path.dirname(working_dir+'/temp/'))
             model.setSource(temp_model_source)
             os.close(temp_file)
             with open(temp_model_source, 'wb') as file:
@@ -195,7 +197,7 @@ def resolve_model(model, sed_doc, working_dir):
         except Exception:
             raise ValueError('Model could not be downloaded from `{}`.'.format(source))
 
-        temp_file, temp_model_source = tempfile.mkstemp()
+        temp_file, temp_model_source = tempfile.mkstemp(dir=os.path.dirname(working_dir+'/temp/'))
         model.setSource(temp_model_source)
         os.close(temp_file)
         with open(temp_model_source, 'wb') as file:

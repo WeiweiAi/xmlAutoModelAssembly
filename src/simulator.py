@@ -195,6 +195,7 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_vari
         The format is (voi, states, rates, variables, current_index, sed_results)
     parameters : dict
         The parameters of the model
+        {id:{'name': , 'component': , 'index': , 'type': , 'value': }}
 
     Raises
     ------
@@ -270,6 +271,8 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,cu
         The format is (voi, states, rates, variables, current_index, sed_results)
     parameters : dict
         The parameters of the model
+        The format is {id:{'name':'variable name','component':'component name',
+        'type':'state','value':value,'index':index}}
     
     Raises
     ------
@@ -352,20 +355,17 @@ def get_KISAO_parameters(algorithm):
         The parameters of the integrator
         None if the method is not supported.
     """
-
+    method = KISAO_ALGORITHMS[algorithm['kisaoID']]
+    integrator_parameters = {}
     if algorithm['kisaoID'] == 'KISAO:0000030':
         # Euler forward method
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        integrator_parameters = {}
         if 'listOfAlgorithmParameters' in algorithm:
             for p in algorithm['listOfAlgorithmParameters']:
                 if p['kisaoID'] == 'KISAO:0000483':
                     integrator_parameters['step_size'] = float(p['value'])
 
     elif algorithm['kisaoID'] == 'KISAO:0000535':
-            # VODE
-            method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-            integrator_parameters = {}
+            # VODE            
             if 'listOfAlgorithmParameters' in algorithm:
                 for p in algorithm['listOfAlgorithmParameters']:
                     if p['kisaoID'] == 'KISAO:0000209':
@@ -384,8 +384,6 @@ def get_KISAO_parameters(algorithm):
                         integrator_parameters['order'] = int(p['value'])
     elif algorithm['kisaoID'] == 'KISAO:0000088':
         # LSODA
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        integrator_parameters = {}
         if 'listOfAlgorithmParameters' in algorithm:
             for p in algorithm['listOfAlgorithmParameters']:
                 if p['kisaoID'] == 'KISAO:0000209':
@@ -404,8 +402,6 @@ def get_KISAO_parameters(algorithm):
                     integrator_parameters['max_order_s'] = int(p['value'])
     elif algorithm['kisaoID'] == 'KISAO:0000087':
         # dopri5
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        integrator_parameters = {}
         if 'listOfAlgorithmParameters' in algorithm:
             for p in algorithm['listOfAlgorithmParameters']:
                 if p['kisaoID'] == 'KISAO:0000209':
@@ -420,8 +416,6 @@ def get_KISAO_parameters(algorithm):
                     integrator_parameters['beta'] = float(p['value'])
     elif algorithm['kisaoID'] == 'KISAO:0000436':
         # dop853
-        method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        integrator_parameters = {}
         if 'listOfAlgorithmParameters' in algorithm:
             for p in algorithm['listOfAlgorithmParameters']:
                 if p['kisaoID'] == 'KISAO:0000209':

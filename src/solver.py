@@ -45,7 +45,7 @@ def create_sed_results(observables, N):
         sed_results.update({id: np.empty(N+1)})
     return sed_results
 
-def _initialize_module_ode(module, external_variable=None, parameters={}):
+def _initialize_module_ode(module, voi, external_variable=None, parameters={}):
     """
     Initialize the module with ODEs.
 
@@ -58,7 +58,7 @@ def _initialize_module_ode(module, external_variable=None, parameters={}):
     parameters : dict, optional
         The information to modify the parameters. 
         The format is {id:{'name':'variable name','component':'component name',
-        'vtype':'state','value':value,'index':index}}
+        'type':'state','value':value,'index':index}}
     
     Raises
     ------
@@ -81,7 +81,7 @@ def _initialize_module_ode(module, external_variable=None, parameters={}):
     variables = module.create_variables_array()
 
     if external_variable:
-        module.initialise_variables(states, rates, variables,external_variable)
+        module.initialise_variables(voi,states, rates, variables,external_variable)
     else:    
        module.initialise_variables(states, rates, variables)
     
@@ -112,7 +112,7 @@ def _initialize_module_algebraic(module,external_variable=None,parameters={}):
     parameters : dict, optional
         The information to modify the parameters. 
         The format is {id:{'name':'variable name','component':'component name',
-        'vtype':'state','value':value,'index':index}}
+        'type':'state','value':value,'index':index}}
     
     Raises
     ------
@@ -163,7 +163,7 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
     parameters : dict, optional
         The information to modify the parameters. 
         The format is {id:{'name':'variable name','component':'component name',
-        'vtype':'state','value':value,'index':index}}
+        'type':'state','value':value,'index':index}}
     
     Raises
     ------
@@ -181,7 +181,7 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
 
     if mtype=='ode':
         try:
-            states, rates, variables=_initialize_module_ode(module,external_variable,parameters)
+            states, rates, variables=_initialize_module_ode(module,voi, external_variable,parameters)
         except ValueError as e:
             raise ValueError(e)         
         current_state = (voi, states, rates, variables, 0,sed_results)
@@ -270,6 +270,8 @@ def _append_current_results(sed_results, index, observables, voi, states, variab
         The current index of the results.
     observables : dict
         The dictionary of the observables.
+        {id:{'name':'variable name','component':'component name',
+        'type':'state','index':index}}
     voi : float
         The current value of the independent variable.
     states : list

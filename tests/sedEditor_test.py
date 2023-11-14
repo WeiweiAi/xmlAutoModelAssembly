@@ -14,7 +14,7 @@ def test_task():
             't':{'component':'SLCT3_BG','name':'t'}
             }
     dict_algorithmParameter={'kisaoID':'KISAO:0000467', 'name':'max_step','value':'0.001'}
-    dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[dict_algorithmParameter]}
+    dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[]}
     simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':2.3,'outputEndTime':1000,'numberOfSteps':1000}
    # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
    # simSetting={'type':'SteadyState','algorithm':dict_algorithm}
@@ -108,7 +108,7 @@ def test_task_pe():
                         }
     fitId='fit1'
     dict_algorithm_sim_parameter={'kisaoID':'KISAO:0000467','name':'max_step','value':'0.001'}
-    dict_algorithm_sim={'kisaoID':'KISAO:0000535','name':'VODE', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
+    dict_algorithm_sim={'kisaoID':'KISAO:0000535','name':'VODE', 'listOfAlgorithmParameters':[]}
     fitExperiments={fitId: {'type':'timeCourse','algorithm':dict_algorithm_sim, 
                             'time':(fileId1,dataSourceId_1),
                             'experimentalConditions':[(fileId2,dataSourceId_5)],
