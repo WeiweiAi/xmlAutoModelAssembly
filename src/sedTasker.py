@@ -4,7 +4,7 @@ from .sedEditor import get_dict_algorithm
 from .optimiser import get_KISAO_parameters_opt
 from .analyser import analyse_model_full, get_mtype,parse_model
 from .coder import writePythonCode
-from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, SimSettings, get_KISAO_parameters, sim_TimeCourse
+from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, SimSettings, get_KISAO_parameters, sim_TimeCourse,sim_SteadyState
 from .sedReporter import exec_report
 import tempfile
 import os
@@ -234,14 +234,12 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
         # cleanup modified model sources
-        os.remove(temp_model_source)
+        # os.remove(temp_model_source)
         if cellml_model:
             model_base_dir=os.path.dirname(temp_model.getSource())
             adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
             bounds=Bounds(lowerBound ,upperBound)
-            external_variables_info.update(adjustableParameters_info)
-            external_variables_values.extend(initial_value)            
-
+            external_variables_info.update(adjustableParameters_info)           
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
             if analyser:
                 mtype=get_mtype(analyser)
@@ -259,22 +257,15 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
                 dict_algorithm=get_dict_algorithm(task.getAlgorithm())
                 method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
                 fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
-
+            else:
+                raise RuntimeError('Model analysis failed!')
+        else:
+            raise RuntimeError('Model parsing failed!')
     except (ValueError,FileNotFoundError) as exception:
         print(exception)
         raise RuntimeError(exception)
     
-    if not cellml_model:
-        print('Model parsing failed!',parse_issues)
-        raise RuntimeError('Model parsing failed!')
-    if not analyser:
-        print('Model analysis failed!',issues)
-        raise RuntimeError('Model analysis failed!')  
-    
-    if 'tol' in opt_parameters:
-        tol=opt_parameters['tol']
-    else:
-        tol=None
+    tol = opt_parameters.pop('tol', None)
     
     res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
                                                           external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
@@ -284,8 +275,9 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
 
 def objective_function(param_vals, analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments):
     residuals_sum=0
+    external_variables_values_extends=external_variables_values+param_vals.tolist()
     try:
-        external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
+        external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values_extends)
     except ValueError as exception:
         print(exception)
         raise RuntimeError(exception)
@@ -293,6 +285,7 @@ def objective_function(param_vals, analyser, cellml_model, mtype, module, extern
     for i in range(len(experimentReferences)):
         for experimentReference in experimentReferences[i]:
             sim_setting=SimSettings()
+            sim_setting.number_of_steps=0
             simulation_type=fitExperiments[experimentReference]['type']
             sim_setting.tspan=fitExperiments[experimentReference]['tspan']
             dict_algorithm=fitExperiments[experimentReference]['algorithm']
@@ -303,13 +296,17 @@ def objective_function(param_vals, analyser, cellml_model, mtype, module, extern
             observables_weight=fitness_info[1]
             observables_exp=fitness_info[2]
         
-        if simulation_type=='timeCourse':
-            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+            if simulation_type=='timeCourse':
+                current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+            elif simulation_type=='steadyState':
+                current_state=sim_SteadyState(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+            else:
+                raise RuntimeError('Simulation type not supported!')
             sed_results = current_state[-1]
             residuals={}
             for key, value in sed_results.items():
                 residuals[key]=value-observables_exp[key]
                 residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
-    
+
     return residuals_sum
 

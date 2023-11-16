@@ -181,7 +181,8 @@ def analyse_model(flatModel,external_variables_dic={}):
     if issues=='':
         return analyser, issues
     else:
-        return None, issues
+        return analyser, issues # TODO: need to check when analyser is not None and issues is not empty.
+        #return None, issues
     
 def analyse_model_full(model,base_dir,external_variables_info={},strict_mode=True):
     """ 

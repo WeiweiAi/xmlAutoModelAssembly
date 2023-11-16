@@ -195,9 +195,9 @@ def _setSlice(sed_slice, reference,value=None,index=None,startIndex=None,endInde
             _operation_flag_check(sed_slice.setValue(value), 'Set the value attribute of a slice')
         if index:
             _operation_flag_check(sed_slice.setIndex(index), 'Set the index attribute of a slice')
-        if startIndex:
+        if startIndex is not None:
             _operation_flag_check(sed_slice.setStartIndex(startIndex), 'Set the startIndex attribute of a slice')
-        if endIndex:
+        if endIndex is not None:
             _operation_flag_check(sed_slice.setEndIndex(endIndex), 'Set the endIndex attribute of a slice')
     except ValueError as e:
         raise

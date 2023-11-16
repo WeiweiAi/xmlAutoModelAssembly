@@ -87,7 +87,7 @@ def test_task_pe():
     component_5='SLCT3_BG_io'
     name_5='q_Ao'
 
-    dict_algorithmParameter_opt={'kisaoID':'KISAO:0000211','name':'xatol','value':'1e-8'}
+    dict_algorithmParameter_opt={'kisaoID':'KISAO:0000597','name':'tol','value':'1e-6'}
     dict_algorithmParameter_opt2={'kisaoID':'KISAO:0000486','name':'maxiter','value':'1e4'}
     dict_algorithm_opt={'kisaoID':'KISAO:0000514','name':'Nelder-Mead', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
     
@@ -120,7 +120,7 @@ def test_task_pe():
                           'parameter2':{'component':'SLCT3_BG_param','name':'kappa_re2','lowerBound':0.0,'upperBound':10.0,'initialValue':0.1,'scale':'linear','experimentReferences':[fitId]}
                           }         
 
-    doc=add_peTask2dict(dict_sedDocument, model_name, model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
+    add_peTask2dict(dict_sedDocument, model_name, model_source,changes,experimentData_files, adjustableParameters,fitExperiments,dict_algorithm_opt )
     try:
         doc=create_sedDocment(dict_sedDocument)
     except ValueError as err:

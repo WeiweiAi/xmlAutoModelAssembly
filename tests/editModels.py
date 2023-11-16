@@ -1,8 +1,7 @@
 import sys
     # caution: path[0] is reserved for script path (or '' in REPL)
 sys.path.insert(0, '..')
-from src.builder import csv2model,create_model,import_setup,importUnits
-from src.analyser import parse_model,resolve_imports,flatten_model,analyse_model,ext_var_dic
+from src.analyser import parse_model
 from src.coder import writeCellML,writePythonCode
 from libcellml import Annotator
 
@@ -16,7 +15,7 @@ full_path_imported_model='./csv/units_BG.cellml'
 importSource, import_model=import_setup(model_path,full_path_imported_model, strict_mode=True)
 units_to_define=importUnits(model,importSource)
 """
-full_path='./csv/SLCT3_BG_test.cellml'
+full_path='./csv/SLCT3_ss_test.cellml'
 #writeCellML(full_path, model)
 model_parse, issues=parse_model(full_path, strict_mode=True)
 annotator = Annotator()

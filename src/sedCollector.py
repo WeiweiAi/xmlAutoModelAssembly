@@ -337,14 +337,14 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
                     if dim1_present and (not dim2_present): 
                         # get the value(s) at index=dim1_value or all values if dim1_value is not set then subdivide the values according to startIndex and endIndex
                         # TODO: need to check if the understanding of the slice is correct   
-                        if dim1_value:
+                        if dim1_value is not None:
                             value=df.iloc[[dim1_value]]
-                        elif dim1_startIndex and dim1_endIndex:
-                            value=df.iloc[dim1_startIndex:dim1_endIndex]
-                        elif dim1_startIndex and (not dim1_endIndex):
+                        elif dim1_startIndex is not None and dim1_endIndex is not None:
+                            value=df.iloc[dim1_startIndex:(dim1_endIndex+1)]
+                        elif dim1_startIndex is not None and (dim1_endIndex is None):
                             value=df.iloc[dim1_startIndex:]
-                        elif (not dim1_startIndex) and dim1_endIndex:
-                            value=df.iloc[:dim1_endIndex]
+                        elif (dim1_startIndex is None) and dim1_endIndex is not None:
+                            value=df.iloc[:(dim1_endIndex+1)]
                         else:
                             value=df
                         return value.to_numpy()
@@ -354,12 +354,12 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
                         if dim2_value:
                             columnName=dim2_value
                             df_selected=df[columnName]
-                            if dim2_startIndex and dim2_endIndex:
-                                value=df_selected.iloc[dim2_startIndex:dim2_endIndex]
-                            elif dim2_startIndex and (not dim2_endIndex):
+                            if dim2_startIndex is not None and dim2_endIndex is not None:
+                                value=df_selected.iloc[dim2_startIndex:(dim2_endIndex+1)]
+                            elif dim2_startIndex is not None and (dim2_endIndex is None):
                                 value=df_selected.iloc[dim2_startIndex:]
-                            elif (not dim2_startIndex) and dim2_endIndex:
-                                value=df_selected.iloc[:dim2_endIndex]
+                            elif (dim2_startIndex is None) and dim2_endIndex is not None:
+                                value=df_selected.iloc[:(dim2_endIndex+1)]
                             else:
                                 value=df_selected
                             return value.to_numpy()
@@ -368,8 +368,8 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
                         # get a single value at index=dim1_value and column=dim2_value
                         columnName=dim2_value
                         df_selected=df[columnName]
-                        if dim1_value:
-                            df_selected=df_selected.iloc[[dim1_value]]
+                        if dim1_value is not None:
+                            df_selected=df_selected.iloc[[float(dim1_value)]]
                         return df_selected.to_numpy()
                     else:
                         raise ValueError('Data source `{}` is not defined.'.format(dataSourceID))
@@ -550,7 +550,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                         raise exception  
                                       
                     observables_info.update(observable)
-                key=list(observable.keys())[0]
+                key=sedVars[0].getId()
 
                 if fitMapping.isSetWeight():
                     weight=fitMapping.getWeight()

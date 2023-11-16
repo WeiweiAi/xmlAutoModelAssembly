@@ -14,7 +14,7 @@ external_variable_component='SLC_template3_ss'
 external_variables_info=[(external_variable_component,external_variable_name)]
 exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=None, external_variables_info=[],external_variables_values=[], indent=0)
 """
-filename='./csv/test_pe.sedml'
+filename='./csv/SLC3_SS_pe.sedml'
 doc=read_sedml(filename)
 print(validate_sedml(filename))
 working_dir='./csv'
