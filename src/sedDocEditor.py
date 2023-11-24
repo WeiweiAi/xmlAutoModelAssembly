@@ -362,39 +362,41 @@ def add_peTask2dict(dict_sedDocument, model_name, model_source,changes,experimen
         for experimentalCondition_des in fitExperiment['experimentalConditions']:
             fileId=experimentalCondition_des[0]
             dataSourceId=experimentalCondition_des[1]
-            experimentalCondition=experimentData_files[fileId]['experimentalConditions'][dataSourceId]
-            var_id = 'var_'+ dataSourceId
-            dict_variable_init={'id':var_id,'target':target_component_variable_initial(experimentalCondition['component'], experimentalCondition['name']),
-                                'modelReference':model_name,'taskReference':task_id}
-            dataGenerator_id = 'dg_'+ dataSourceId
-            dict_dataGenerator_init={'id':dataGenerator_id,'name':'dataGenerator1','math':experimentalCondition['name'],'listOfVariables':[dict_variable_init]}
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_init)
-
-            dict_fitMapping_initial= {'type':'experimentalCondition','dataSource':dataSourceId,'target':dataGenerator_id}
-            dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_initial)
+            if 'experimentalConditions' in experimentData_files[fileId]:
+                experimentalCondition=experimentData_files[fileId]['experimentalConditions'][dataSourceId]
+                var_id = 'var_'+ dataSourceId
+                dict_variable_init={'id':var_id,'target':target_component_variable_initial(experimentalCondition['component'], experimentalCondition['name']),
+                                    'modelReference':model_name,'taskReference':task_id}
+                dataGenerator_id = 'dg_'+ dataSourceId
+                dict_dataGenerator_init={'id':dataGenerator_id,'name':'dataGenerator1','math':experimentalCondition['name'],'listOfVariables':[dict_variable_init]}
+                dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_init)
+    
+                dict_fitMapping_initial= {'type':'experimentalCondition','dataSource':dataSourceId,'target':dataGenerator_id}
+                dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_initial)
 
         for observable_des in fitExperiment['observables']:
             fileId=observable_des[0]
             dataSourceId=observable_des[1]
-            observable=experimentData_files[fileId]['observables'][dataSourceId]
-            var_id = 'var_'+ dataSourceId
-            dict_variable_observe={'id':var_id,'target':target_component_variable(observable['component'], observable['name']),
-                                   'modelReference':model_name,'taskReference':task_id}
-            dataGenerator_id = 'dg_'+ dataSourceId
-            dict_dataGenerator_observe={'id':dataGenerator_id,'name':'dataGenerator1','math':observable['name'],'listOfVariables':[dict_variable_observe]}
-            dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_observe)
-           
-            if isinstance(observable['weight'], str):
-                dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataGenerator_id,'pointWeight':observable['weight']}
-            else:
-                dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataGenerator_id,'weight':observable['weight']}
-   
-            dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_observe)
-            
-            dataSet_id = 'dataset_'+ dataSourceId
+            if 'observables' in experimentData_files[fileId]:
+                observable=experimentData_files[fileId]['observables'][dataSourceId]
+                var_id = 'var_'+ dataSourceId
+                dict_variable_observe={'id':var_id,'target':target_component_variable(observable['component'], observable['name']),
+                                       'modelReference':model_name,'taskReference':task_id}
+                dataGenerator_id = 'dg_'+ dataSourceId
+                dict_dataGenerator_observe={'id':dataGenerator_id,'name':'dataGenerator1','math':observable['name'],'listOfVariables':[dict_variable_observe]}
+                dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator_observe)
 
-            dict_dataSet={'id':dataSet_id,'label':dataSourceId,'dataReference':dataGenerator_id}
-            dict_report['listOfDataSets'].append(dict_dataSet)     
+                if isinstance(observable['weight'], str):
+                    dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataGenerator_id,'pointWeight':observable['weight']}
+                else:
+                    dict_fitMapping_observe= {'type':'observable','dataSource':dataSourceId,'target':dataGenerator_id,'weight':observable['weight']}
+    
+                dict_fitExperiment['listOfFitMappings'].append(dict_fitMapping_observe)
+
+                dataSet_id = 'dataset_'+ dataSourceId
+
+                dict_dataSet={'id':dataSet_id,'label':dataSourceId,'dataReference':dataGenerator_id}
+                dict_report['listOfDataSets'].append(dict_dataSet)     
         
         dict_parameterEstimationTask['listOfFitExperiments'].append(dict_fitExperiment)
 

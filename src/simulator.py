@@ -4,6 +4,7 @@ from libcellml import AnalyserVariable
 from pathlib import PurePath
 import importlib.util
 import os
+import types
 
 """
 ====================
@@ -538,6 +539,7 @@ class External_module:
     -----
     This class only allows the model to take inputs, 
     while the inputs do not depend on the model variables.
+    The inputs are constant during the simulation.
         
     """
     def __init__(self, param_indices, param_vals):
@@ -559,7 +561,63 @@ class External_module:
 
     def external_variable_ode(self,voi, states, rates, variables,index):
         return self.param_vals[self.param_indices.index(index)]
-          
+
+class External_module_varies:
+    """ Class to define the external module.
+
+    Attributes
+    ----------
+    param_indices: list
+        The indices of the variable in the generated python module.
+    param_vals: list
+        The values of the variables given by the external module .
+
+    Methods
+    -------
+    external_variable_algebraic(variables,index)
+        Define the external variable function for algebraic type model.
+    external_variable_ode(voi, states, rates, variables,index)
+        Define the external variable function for ode type model.  
+    
+    Notes
+    -----
+    This class only allows the model to take inputs, 
+    while the inputs do not depend on the model variables.
+    The inputs are constant during the simulation.
+        
+    """
+    def __init__(self, param_indices, param_vals):
+        """
+
+         Parameters
+         ----------
+         param_indices: list
+             The indices of the variable in the generated python module.
+         param_vals: list
+             The values of the variables given by the external module .
+             
+        """
+        self.param_vals = param_vals
+        self.param_indices = param_indices
+    
+    def external_variable_algebraic(self, variables,index,result_index=0):
+        temp=self.param_vals[self.param_indices.index(index)]
+        if isinstance(temp, (int, float)):
+            return temp
+        elif isinstance(temp, list):
+            return temp[result_index]
+        elif isinstance(temp,types.FunctionType):
+            return temp(result_index)
+
+    def external_variable_ode(self,voi, states, rates, variables,index,result_index=0):
+        temp=self.param_vals[self.param_indices.index(index)]
+        if isinstance(temp, (int, float)):
+            return temp
+        elif isinstance(temp, list):
+            return temp[result_index]
+        elif isinstance(temp,types.FunctionType):
+            return temp(voi)
+
 def get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values):
     """ Get the external variable function for the model.
 
@@ -610,6 +668,48 @@ def get_externals(mtype,analyser, cellml_model, external_variables_info, externa
             raise ValueError("The model type {} is not supported!".format(mtype))
        
     return external_variable
+
+def get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values):
+    """ Get the external variable function for the model.
+
+    Parameters
+    ----------
+    analyser: Analyser
+        The Analyser instance of the CellML model.
+    cellml_model: Model
+        The CellML model.
+    external_variables_info: dict
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}.
+    external_variables_values: list
+        The values of the external variables.
+    
+    Raises
+    ------
+    ValueError
+        If the number of external variables does not match the number of external variables values.
+        If a variable is not found in the model.
+
+    Returns
+    -------
+    object
+        The External_module_varies.
+    """
+    # specify external variables
+    try:
+        param_indices=_get_variable_indices(analyser, cellml_model,external_variables_info)
+    except ValueError as exception:
+        print(exception)
+        raise ValueError(exception)
+    
+    if len(param_indices)!=len(external_variables_values):
+        raise ValueError("The number of external variables does not match the number of external variables values!")
+
+    if len(param_indices)==0:
+        external_module= None
+    else:
+        external_module=External_module_varies(param_indices,external_variables_values)
+       
+    return external_module
 
 def get_observables(analyser, model, variables_info):
     """

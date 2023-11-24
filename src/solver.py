@@ -1,5 +1,6 @@
 from scipy.integrate import ode
 import numpy as np
+import functools
 
 """
 ======
@@ -142,7 +143,7 @@ def _initialize_module_algebraic(module,external_variable=None,parameters={}):
 
     return variables
 
-def initialize_module(mtype, observables, N, module, voi=0, external_variable=None, parameters={}):
+def initialize_module(mtype, observables, N, module, voi=0, external_module=None, parameters={}):
     """
     Initializes a module based on the given model type and parameters.
 
@@ -158,8 +159,7 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
         The module to initialize.
     voi : float, optional
         The initial value of the variable of integration. Defaults to 0.
-    external_variable : object, optional
-        The function to specify external variable.
+    external_module : object, optional
     parameters : dict, optional
         The information to modify the parameters. 
         The format is {id:{'name':'variable name','component':'component name',
@@ -177,10 +177,13 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
         A tuple containing the current state of the module.
         The format is (voi, states, rates, variables, current_index, sed_results).
     """
-    sed_results=create_sed_results(observables, N)
-
+    sed_results=create_sed_results(observables, N)    
+    external_variable=None
+    
     if mtype=='ode':
         try:
+            if external_module:
+                external_variable=external_module.external_variable_ode
             states, rates, variables=_initialize_module_ode(module,voi, external_variable,parameters)
         except ValueError as e:
             raise ValueError(e)         
@@ -188,6 +191,8 @@ def initialize_module(mtype, observables, N, module, voi=0, external_variable=No
 
     elif mtype=='algebraic':
         try:
+            if external_module:
+                external_variable=external_module.external_variable_algebraic
             variables=_initialize_module_algebraic(module,external_variable,parameters)
         except ValueError as e:
             raise ValueError(e)
@@ -432,7 +437,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     current_state = (solver.t, solver.y, rates, variables, current_index, sed_results)
     return current_state
 
-def algebra_evaluation(module, current_state, observables, number_of_steps, external_variable=None):
+def algebra_evaluation(module, current_state, observables, number_of_steps, external_module=None):
     """ Algebraic evaluation.
     
     Parameters
@@ -457,12 +462,17 @@ def algebra_evaluation(module, current_state, observables, number_of_steps, exte
     """
 
     voi, states, rates, variables, current_index, sed_results = current_state
-
+    external_variable=None
+    if external_module:
+        external_variable=functools.partial(external_module.external_variable_algebraic,result_index=current_index)
     _update_variables(0, None, None, variables, module, external_variable)
     _append_current_results(sed_results, current_index, observables, 0, None, variables)
 
     for i in range(number_of_steps):
         current_index = current_index + 1
+        if external_module:
+            external_variable=functools.partial(external_module.external_variable_algebraic,result_index=current_index)            
+        _update_variables(current_index, None, None, variables, module, external_variable)
         _append_current_results(sed_results, current_index, observables, 0, None, variables)
 
     current_state = (voi, states, rates, variables, current_index, sed_results)
