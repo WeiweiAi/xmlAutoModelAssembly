@@ -15,12 +15,12 @@ full_path_imported_model='./csv/units_BG.cellml'
 importSource, import_model=import_setup(model_path,full_path_imported_model, strict_mode=True)
 units_to_define=importUnits(model,importSource)
 """
-full_path='./csv/SLCT4_BG_ss_test_AB.cellml'
+full_path='./csv/SLCT4_BG_ss_test.cellml'
 #writeCellML(full_path, model)
 model_parse, issues=parse_model(full_path, strict_mode=True)
 annotator = Annotator()
 annotator.setModel(model_parse)
 annotator.clearAllIds()
-newPath='./csv/SLCT4_BG_ss_test_AB_new.cellml'
+newPath='./csv/SLCT4_BG_ss_test_new.cellml'
 writeCellML(model_parse,newPath)
 

@@ -43,7 +43,7 @@ def create_sed_results(observables, N):
     
     sed_results = {}
     for id in observables.keys():
-        sed_results.update({id: np.empty(N+1)})
+        sed_results.update({id: np.zeros(N+1)})
     return sed_results
 
 def _initialize_module_ode(module, voi, external_variable=None, parameters={}):

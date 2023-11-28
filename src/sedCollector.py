@@ -3,9 +3,14 @@ import os
 import pandas
 import tempfile
 import re
-from .sedModel_changes import get_variable_info_CellML
-from .simulator import  get_observables
+from .sedModel_changes import get_variable_info_CellML,resolve_model_and_apply_xml_changes
+from .simulator import  get_observables,get_KISAO_parameters,SimSettings,load_module
 from .sedEditor import get_dict_algorithm
+from .analyser import parse_model,analyse_model_full,get_mtype
+from .coder import writePythonCode
+import copy
+import numpy as np
+
 
 def get_variables_for_task(doc, task):
     """ Get the variables that a task must record
@@ -576,7 +581,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
 
     return fitExperiments
 
-def get_fit_experiments_1(doc,task,dfDict):
+def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}):
     """
     Return a dictionary containing fit experiment information.
     Assume the model is a CellML model.
@@ -587,7 +592,11 @@ def get_fit_experiments_1(doc,task,dfDict):
     doc: :obj:`SedDocument`
         An instance of SedDocument
     task: :obj:`SedParameterEstimationTask`
+    working_dir: :obj:`str`
+        working directory of the SED document (path relative to which models are located)
     dfDict: :obj:`dict` of :obj:`pandas.DataFrame`
+    external_variables_info: dict, optional
+        The external variables to be specified, in the format of {id:{'component': , 'name': }}
 
     Raises
     ------
@@ -597,43 +606,68 @@ def get_fit_experiments_1(doc,task,dfDict):
     -------
     dict
         A dictionary containing fit experiment information
-        fitExperiments: dict, {experimentId: {'model':sedModel,'type':type,'algorithm':algorithm,'tspan':tspan,'parameters':parameters,'fitness_info':fitness_info}}
-        type: str, 'steadyState' or 'timeCourse'
-        algorithm: {'kisaoID': , 'name': , 'listOfAlgorithmParameters': [{'kisaoID': , 'name': , 'value': }]}
-        tspan: list, [t0,t1]
-        parameters: dict, The format is {sedVarId: initial_value}
-        fitness_info: tuple, (observables_info,observables_weight,observables_exp)
-        observables_info: dict, {dataGeneratorId: sedVars}, where dataGeneratorId is the id of the data generator for the observable
-        observables_weight: dict, {dataGeneratorId: weight}, where weight is numpy.ndarray.
-        observables_exp: dict, {dataGeneratorId: observable_exp}, where observable_exp is numpy.ndarray.
+        fitExperiments: dict,
+        {experimentId: {'type':type,'algorithm':algorithm,'tspan':tspan,'parameters':parameters,'fitness_info':fitness_info,
+        'model':model,'cellml_model':cellml_model,'analyser':analyser, 'module':module, 'mtype':mtype,
+        'external_variables_info':external_variables_info,'param_indices':param_indices
+        },
+        'adjustableParameters_info':adjustableParameters_info,'experimentReferences':experimentReferences,	
+        'lowerBound':lowerBound,'upperBound':upperBound,'initial_value':initial_value}
 
     """
     fitExperiments={}
     original_models = get_models_referenced_by_task(doc,task)
-    model=original_models[0]
+    model=original_models[0] # parameter estimation task should have only one model
+    try:
+        temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
+        cellml_model,parse_issues=parse_model(temp_model_source, True)
+        if not cellml_model:
+            raise RuntimeError('Model parsing failed!')
+        adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
+        adjustables=(lowerBound,upperBound,initial_value)
+    except ValueError as exception:
+        raise exception
     for fitExperiment in task.getListOfFitExperiments():
+        external_variables_info_new=copy.deepcopy(external_variables_info)
+        fitExperiments[fitExperiment.getId()]={}
         if fitExperiment.getTypeAsString ()=='steadyState':
-            simulation_type='steadyState'
+            fitExperiments[fitExperiment.getId()]['type']='steadyState'
         elif fitExperiment.getTypeAsString ()=='timeCourse':
-            simulation_type='timeCourse'
+            fitExperiments[fitExperiment.getId()]['type']='timeCourse'
         else:
             raise ValueError('Experiment type {} is not supported!'.format(fitExperiment.getTypeAsString ()))
-        fitExperiments[fitExperiment.getId()]={}
-        fitExperiments[fitExperiment.getId()]['type']=simulation_type
+        sim_setting=SimSettings()
+        sim_setting.number_of_steps=0
         sed_algorithm = fitExperiment.getAlgorithm()
         try:
-            fitExperiments[fitExperiment.getId()]['algorithm']=get_dict_algorithm(sed_algorithm)
+            dict_algorithm=get_dict_algorithm(sed_algorithm)
+            sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)
         except ValueError as exception:
             raise exception
-        fitExperiments[fitExperiment.getId()]['tspan']=[]
-        fitExperiments[fitExperiment.getId()]['parameters']={}
+        if fitExperiment.isSetName (): # temporary solution for the case that a variant model is used for this fit experiment
+            modelReference=fitExperiment.getName ()
+            model=doc.getModel(modelReference)
+        fitExperiments[fitExperiment.getId()]['model']=model
+        try:
+            temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
+            cellml_model,parse_issues=parse_model(temp_model_source, True)
+            if not cellml_model:
+                raise RuntimeError('Model parsing failed!')
+        except ValueError as exception:
+            raise exception   
+        sub_adjustableParameters_info={}
+        adj_param_indices=[]
+        for i in range(len(experimentReferences)):         
+            if fitExperiment.getId() in experimentReferences[i]:
+                sub_adjustableParameters_info.update({i:adjustableParameters_info[i]})
+                adj_param_indices.append(i)
+        
+        external_variables_info_new.update(sub_adjustableParameters_info) 
         observables_exp={}
         observables_weight={}
         observables_info={}
-        if fitExperiment.isSetName ():
-            modelReference=fitExperiment.getName ()
-            model=doc.getModel(modelReference)
-        fitExperiments[fitExperiment.getId()]['model']=model 
+        fitExperiments[fitExperiment.getId()]['parameters']={} 
+        parameters_values=[]       
         for fitMapping in fitExperiment.getListOfFitMappings ():
             if fitMapping.getTypeAsString ()=='time':
                 try:
@@ -644,7 +678,7 @@ def get_fit_experiments_1(doc,task,dfDict):
                 if tspan.ndim>1:
                     raise ValueError('The time course {} is not 1D array!'.format(fitMapping.getDataSource()))
                 else:
-                    fitExperiments[fitExperiment.getId()]['tspan']=tspan
+                    sim_setting.tspan=tspan
 
             elif fitMapping.getTypeAsString ()=='experimentalCondition':
                 try:
@@ -656,29 +690,38 @@ def get_fit_experiments_1(doc,task,dfDict):
                 elif len(initial_value_)==1:
                     initial_value=initial_value_[0]
                 else:
-                    raise ValueError('The experimental condition {} is not a scalar!'.format(fitMapping.getDataSource()))
-                a=fitMapping.getTarget()
+                    #raise ValueError('The experimental condition {} is not a scalar!'.format(fitMapping.getDataSource()))
+                    initial_value=initial_value_
                 dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
                 sedVars=get_variables_for_data_generator(dataGenerator)
                 if len(sedVars)>1:
-                    raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))                
-                for sedVar in sedVars:
-                    fitExperiments[fitExperiment.getId()]['parameters'].update({sedVar.getId():initial_value})                                       
-
+                    raise ValueError('The data generator {} has more than one variable!'.format(fitMapping.getTarget()))
+                else:
+                    try:
+                        parameter_info = get_variable_info_CellML(sedVars,model_etree)
+                        if isinstance (initial_value, np.ndarray):
+                            external_variables_info_new.update(parameter_info)
+                            parameters_values.append(initial_value)
+                        else:
+                            fitExperiments[fitExperiment.getId()]['parameters'].update(parameter_info)
+                            fitExperiments[fitExperiment.getId()]['parameters'][sedVars[0].getId()]['value']=initial_value                       
+                    except ValueError as exception:
+                        raise exception                          
             elif fitMapping.getTypeAsString ()=='observable':
                 try:
                     observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
                     raise exception
                 if observable_exp.ndim>1:
-                    raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))
-                
+                    raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))             
                 dataGenerator=doc.getDataGenerator(fitMapping.getTarget())
                 sedVars=get_variables_for_data_generator(dataGenerator)
-                key=dataGenerator.getId()                                 
-                observables_info.update({key:sedVars})
-                
-
+                try:
+                    observable_info = get_variable_info_CellML(sedVars,model_etree)
+                except ValueError as exception:
+                    raise exception                                   
+                observables_info.update(observable_info)
+                key=dataGenerator.getId()                                                
                 if fitMapping.isSetWeight():
                     weight=fitMapping.getWeight()
                     observables_weight.update({key:weight})
@@ -702,7 +745,23 @@ def get_fit_experiments_1(doc,task,dfDict):
 
             else:
                 raise ValueError('Fit mapping type {} is not supported!'.format(fitMapping.getTypeAsString ()))
-            
-        fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp) 
+        
+        model_base_dir=os.path.dirname(temp_model.getSource())
+                         
+        analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info_new)       
+        if analyser:
+            mtype=get_mtype(analyser)
+            # write Python code to a temporary file
+            tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
+            writePythonCode(analyser, full_path)
+            module=load_module(full_path)
+            os.close(tempfile_py)
+            # and delete temporary file
+          #  os.remove(full_path)
 
-    return fitExperiments 
+        fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp)
+        fitExperiments[fitExperiment.getId()]['sim_setting']=sim_setting
+        fitExperiments[fitExperiment.getId()].update({'cellml_model':cellml_model,'analyser':analyser, 'module':module, 'mtype':mtype,
+                                                                            'external_variables_info':external_variables_info_new,
+                                                                'adj_param_indices':adj_param_indices,'parameters_values':parameters_values})      
+    return fitExperiments,adjustables 

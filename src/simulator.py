@@ -5,6 +5,7 @@ from pathlib import PurePath
 import importlib.util
 import os
 import types
+import numpy
 
 """
 ====================
@@ -604,7 +605,7 @@ class External_module_varies:
         temp=self.param_vals[self.param_indices.index(index)]
         if isinstance(temp, (int, float)):
             return temp
-        elif isinstance(temp, list):
+        elif isinstance(temp, list) or isinstance(temp, numpy.ndarray):
             return temp[result_index]
         elif isinstance(temp,types.FunctionType):
             return temp(result_index)
@@ -782,6 +783,11 @@ def _get_index_type_for_variable(analyser, variable):
         component_name=var.parent().name()
         if component_name==variable.parent().name() and var_name==variable.name():
             return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        else:
+            for i in range(variable.equivalentVariableCount()):
+                eqv = variable.equivalentVariable(i)
+                if component_name==eqv.parent().name() and var_name==eqv.name():
+                    return avar.index(), AnalyserVariable.typeAsString(avar.type())
         
     for i in range(analysedModel.stateCount()):
         avar=analysedModel.state(i)
@@ -790,6 +796,11 @@ def _get_index_type_for_variable(analyser, variable):
         component_name=var.parent().name()
         if component_name==variable.parent().name() and var_name==variable.name():
             return avar.index(), AnalyserVariable.typeAsString(avar.type())
+        else:
+            for i in range(variable.equivalentVariableCount()):
+                eqv = variable.equivalentVariable(i)
+                if component_name==eqv.parent().name() and var_name==eqv.name():
+                    return avar.index(), AnalyserVariable.typeAsString(avar.type())
         
     avar=analysedModel.voi()
     if avar:

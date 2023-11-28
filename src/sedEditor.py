@@ -1625,6 +1625,8 @@ def _setFitExperiment(task_pe,dict_fitExperiment):
     try:
         _operation_flag_check(fe.setId(dict_fitExperiment['id']), 'Set the id attribute of a fit experiment')
         _operation_flag_check(fe.setType(dict_fitExperiment['type']), 'Set the type attribute of a fit experiment')
+        if 'name' in dict_fitExperiment:
+            _operation_flag_check(fe.setName(dict_fitExperiment['name']), 'Set the name attribute of a fit experiment')
         alg=fe.createAlgorithm()
         _setAlgorithm(alg, dict_fitExperiment['algorithm'])
     except ValueError as e:
@@ -1675,6 +1677,8 @@ def _get_dict_fitExperiment(fe):
     dict_fitExperiment = {}
     dict_fitExperiment['id'] = fe.getId()
     dict_fitExperiment['type'] = fe.getTypeAsString()
+    if fe.isSetName():
+        dict_fitExperiment['name'] = fe.getName()
     sed_algorithm = fe.getAlgorithm()
     try:
         dict_fitExperiment['algorithm'] = get_dict_algorithm(sed_algorithm)

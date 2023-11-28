@@ -14,7 +14,7 @@ external_variable_component='SLC_template3_ss'
 external_variables_info=[(external_variable_component,external_variable_name)]
 exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=None, external_variables_info=[],external_variables_values=[], indent=0)
 """
-filename='./csv/SLC3_ss_pe_combine.sedml'
+filename='./csv/SLCT4_BG_ss_test_pe.sedml'
 doc=read_sedml(filename)
 print(validate_sedml(filename))
 working_dir='./csv'
@@ -37,8 +37,6 @@ def func_qo(x):
         return x-26
 
 for i_task, task in enumerate(doc.getListOfTasks()):
-    res= exec_parameterEstimationTask(doc,task, working_dir,
-                                      external_variables_info={'q_Ao':{'component': 'SLCT3_ss_io', 'name': 'q_Ao'},'q_Ai':{'component': 'SLCT3_ss_io', 'name': 'q_Ai'}},
-                                      external_variables_values=[func_qo,func_qi])
+    res= exec_parameterEstimationTask(doc,task, working_dir, external_variables_info={}, external_variables_values=[])
     print(res)
     #report_task(doc,task, variable_results, base_out_path, rel_out_path=None, report_formats =['csv'])

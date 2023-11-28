@@ -11,6 +11,7 @@ import os
 import sys
 from scipy.optimize import minimize, Bounds,LinearConstraint,least_squares
 import numpy
+import copy
 
 
 
@@ -217,224 +218,67 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     -------
     res: scipy.optimize.OptimizeResult
 
-    """ 	
-
-    # get the model
-    original_models = get_models_referenced_by_task(doc,task)
-    if len(original_models) != 1:
-        raise RuntimeError('Task must reference exactly one model.')
-    
-    # get the variables recorded by the task
-    task_vars = get_variables_for_task(doc, task)
-    if len(task_vars) == 0:
-        print('Task does not record any variables.')
-        raise RuntimeError('Task does not record any variables.')
-    # apply changes to the model if any
-    try:
-        temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
-        cellml_model,parse_issues=parse_model(temp_model_source, True)
-        # cleanup modified model sources
-        # os.remove(temp_model_source)
-        if cellml_model:
-            model_base_dir=os.path.dirname(temp_model.getSource())
-            adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
-            bounds=Bounds(lowerBound ,upperBound)
-            external_variables_info.update(adjustableParameters_info)           
-            analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
-            if analyser:
-                mtype=get_mtype(analyser)
-                # write Python code to a temporary file
-                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
-                writePythonCode(analyser, full_path)
-                module=load_module(full_path)
-                os.close(tempfile_py)
-                # and delete temporary file
-                os.remove(full_path)
-                # get optimisation settings and fit experiments
-                dfDict={}
-                for dataDescription in doc.getListOfDataDescriptions() :
-                    dfDict.update({dataDescription.getId():get_df_from_dataDescription(dataDescription, working_dir)})
-                dict_algorithm=get_dict_algorithm(task.getAlgorithm())
-                method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
-                fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
-            else:
-                raise RuntimeError('Model analysis failed!')
-        else:
-            raise RuntimeError('Model parsing failed!')
-    except (ValueError,FileNotFoundError) as exception:
-        print(exception)
-        raise RuntimeError(exception)
-    
-    tol = opt_parameters.pop('tol', None)
-    linear_constraint = LinearConstraint([[1, -1, 0, 0, 0]], [0], [0])
-    """
-    res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
-                                                          external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
-                 method='trust-constr', bounds=bounds, tol=1e-16, options=opt_parameters)
-                """
-    res=least_squares(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
-                                                          external_variables_info,external_variables_values,experimentReferences,fitExperiments,doc), 
-                 bounds=bounds, ftol=1e-12,gtol=1e-12,xtol=1e-12)
-
-    return res
-
-def objective_function(param_vals, analyser, cellml_model, mtype, module, external_variables_info,external_variables_values,experimentReferences,fitExperiments,doc):
-    residuals_sum=0
-    external_variables_values_extends=external_variables_values+param_vals.tolist()
-    try:
-        external_variable=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values_extends)
-    except ValueError as exception:
-        print(exception)
-        raise RuntimeError(exception)
-
-    for i in range(len(experimentReferences)):
-        for experimentReference in experimentReferences[i]:
-            sim_setting=SimSettings()
-            sim_setting.number_of_steps=0
-            simulation_type=fitExperiments[experimentReference]['type']
-            sim_setting.tspan=fitExperiments[experimentReference]['tspan']
-            dict_algorithm=fitExperiments[experimentReference]['algorithm']
-            sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)            
-            fitness_info=fitExperiments[experimentReference]['fitness_info']
-            parameters=fitExperiments[experimentReference]['parameters']
-            observables=fitness_info[0]
-            observables_weight=fitness_info[1]
-            observables_exp=fitness_info[2]
-        
-            if simulation_type=='timeCourse':
-                current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
-            elif simulation_type=='steadyState':
-                current_state=sim_SteadyState(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
-            else:
-                raise RuntimeError('Simulation type not supported!')
-            sed_results = current_state[-1]
-            residuals={}
-            for key, exp_value in observables_exp.items():
-                dataGenerator=doc.getDataGenerator(key)
-                sim_value=calc_data_generator_results(dataGenerator, sed_results)
-                residuals[key]=abs(sim_value-exp_value)
-                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
-
-    return residuals_sum
-
-def exec_parameterEstimationTask_1( doc,task, working_dir,external_variables_info={},external_variables_values=[]):
-    """
-    Execute a SedTask of type ParameterEstimationTask.
-    The model is assumed to be in CellML format.
-    The simulation type supported are 'steadyState' and 'timeCourse'.#TODO: add support for steadyState
-    The ode solver supported are listed in KISAO_ALGORITHMS (.simulator.py)
-    The optimisation algorithm supported are listed in KISAO_ALGORITHMS (.optimiser.py)
-
-    Parameters
-    ----------
-    doc: :obj:`SedDocument`
-        An instance of SedDocument
-    task: :obj:`SedParameterEstimationTask `
-        The task to be executed.
-    working_dir: str
-        working directory of the SED document (path relative to which models are located)
-    external_variables_info: dict, optional
-        The external variables to be specified, in the format of {id:{'component': , 'name': }}
-    external_variables_values: list, optional
-        The values of the external variables to be specified [value1, value2, ...]
-
-    Raises
-    ------
-    RuntimeError
-        If any operation failed.
-
-    Returns
-    -------
-    res: scipy.optimize.OptimizeResult
-
     """ 	    
     # get the variables recorded by the task
     task_vars = get_variables_for_task(doc, task)
     if len(task_vars) == 0:
         print('Task does not record any variables.')
-        raise RuntimeError('Task does not record any variables.')
-    
+        raise RuntimeError('Task does not record any variables.')   
     # get optimisation settings and fit experiments
     dfDict={}
     for dataDescription in doc.getListOfDataDescriptions() :
         dfDict.update({dataDescription.getId():get_df_from_dataDescription(dataDescription, working_dir)})
     dict_algorithm=get_dict_algorithm(task.getAlgorithm())
-    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
-    
-    fitExperiments=get_fit_experiments_1(doc,task,dfDict)
-    for fitId,fitExperiment in fitExperiments.items():
-        model=fitExperiment['model']
-        sub_adjustableParameters_info={}
-        sub_lowerBound=[]
-        sub_upperBound=[]
-        sub_initial_value=[]
-        try:
-            temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
-            cellml_model,parse_issues=parse_model(temp_model_source, True)
-            if not cellml_model:
-                raise RuntimeError('Model parsing failed!')
-            model_base_dir=os.path.dirname(temp_model.getSource())
-            adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)               
-            bounds=Bounds(lowerBound ,upperBound)
-            for i in range(len(experimentReferences)):
-                if fitId in experimentReferences[i]:
-                    sub_adjustableParameters_info.update(adjustableParameters_info[i])
-                    sub_lowerBound.append(lowerBound[i])
-                    sub_upperBound.append(upperBound[i])
-                    sub_initial_value.append(initial_value[i])
-            sim_setting=SimSettings()
-            sim_setting.number_of_steps=0
-            simulation_type=fitExperiment['type']
-            sim_setting.tspan=fitExperiment['tspan']
-            dict_algorithm=fitExperiment['algorithm']
-            sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)            
-            fitness_info=fitExperiment['fitness_info']
-            parameters=fitExperiment['parameters']
-            observables=fitness_info[0]
-            observables_weight=fitness_info[1]
-            observables_exp=fitness_info[2]            
-    
+    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)   
+    fitExperiments,adjustables=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
+    bounds=Bounds(adjustables[0],adjustables[1])
+    initial_value=adjustables[2]
 
-    # apply changes to the model if any
-    try:
-        temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
-        cellml_model,parse_issues=parse_model(temp_model_source, True)
-        # cleanup modified model sources
-        # os.remove(temp_model_source)
-        if cellml_model:
-            model_base_dir=os.path.dirname(temp_model.getSource())
-            adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
-            bounds=Bounds(lowerBound ,upperBound)
-            external_variables_info.update(adjustableParameters_info)           
-            analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
-            if analyser:
-                mtype=get_mtype(analyser)
-                # write Python code to a temporary file
-                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
-                writePythonCode(analyser, full_path)
-                module=load_module(full_path)
-                os.close(tempfile_py)
-                # and delete temporary file
-                os.remove(full_path)
-                
-                fitExperiments=get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict)
-            else:
-                raise RuntimeError('Model analysis failed!')
-        else:
-            raise RuntimeError('Model parsing failed!')
-    except (ValueError,FileNotFoundError) as exception:
-        print(exception)
-        raise RuntimeError(exception)
-    
-    tol = opt_parameters.pop('tol', None)
-    linear_constraint = LinearConstraint([[1, -1, 0, 0, 0]], [0], [0])
-    """
-    res=minimize(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
-                                                          external_variables_info,external_variables_values,experimentReferences,fitExperiments), 
-                 method='trust-constr', bounds=bounds, tol=1e-16, options=opt_parameters)
-                """
-    res=least_squares(objective_function, initial_value, args=(analyser, cellml_model, mtype, module, 
-                                                          external_variables_info,external_variables_values,experimentReferences,fitExperiments,doc), 
+    res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc), 
                  bounds=bounds, ftol=1e-12,gtol=1e-12,xtol=1e-12)
 
     return res
+
+def objective_function(param_vals, external_variables_values, fitExperiments, doc):
+    residuals_sum=0
+    for fitExperiment in fitExperiments.values():
+        sub_param_vals=[]
+        external_variables_info=fitExperiment['external_variables_info']
+        cellml_model=fitExperiment['cellml_model']
+        analyser=fitExperiment['analyser']
+        mtype=fitExperiment['mtype']
+        module=fitExperiment['module']
+        fitness_info=fitExperiment['fitness_info']
+        parameters_info=fitExperiment['parameters']
+        parameters_values=fitExperiment['parameters_values']         
+        for param_index in fitExperiment['adj_param_indices']:
+            sub_param_vals.append(param_vals[param_index])
+
+        external_variables_values_extends=external_variables_values+sub_param_vals+parameters_values    
+        try:
+            external_variable=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values_extends)
+        except ValueError as exception:
+            print(exception)
+            raise RuntimeError(exception)
+        simulation_type=fitExperiment['type']
+        sim_setting=fitExperiment['sim_setting']
+        observables_info=fitness_info[0]
+        observables=get_observables(analyser,cellml_model,observables_info)
+        parameters=get_observables(analyser,cellml_model,parameters_info)
+        observables_weight=fitness_info[1]
+        observables_exp=fitness_info[2]       
+        if simulation_type=='timeCourse':
+            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+        elif simulation_type=='steadyState':
+            current_state=sim_SteadyState(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+        else:
+            raise RuntimeError('Simulation type not supported!')
+        sed_results = current_state[-1]
+        residuals={}
+        for key, exp_value in observables_exp.items():
+            dataGenerator=doc.getDataGenerator(key)
+            sim_value=calc_data_generator_results(dataGenerator, sed_results)
+            residuals[key]=abs(sim_value-exp_value)
+            residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+    
+    return residuals_sum
