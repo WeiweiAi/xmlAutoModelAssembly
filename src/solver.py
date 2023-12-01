@@ -298,7 +298,7 @@ def _append_current_results(sed_results, index, observables, voi, states, variab
             sed_results[id][index] = variables[v['index']]
 
 def solve_euler(module, current_state, observables, output_start_time, output_end_time,
-                number_of_steps, step_size=None, external_variable=None):
+                number_of_steps, step_size=None, external_module=None):
     """ Euler method solver.	
     
     Parameters
@@ -323,6 +323,12 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
     external_variable : object, optional
         The function to specify external variable. Default is None.
 
+    Raises
+    ------
+    ValueError
+        If output_start_time, output_end_time, or number_of_steps is not valid.
+
+
     Returns
     -------
     tuple
@@ -330,46 +336,80 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
         The format is (voi, states, rates, variables, current_index, sed_results).
     """	
 
-    output_step_size = (output_end_time - output_start_time) / number_of_steps
-    if step_size is None:
-        step_size = output_step_size
-        
     voi, states, rates, variables, current_index, sed_results = current_state
-    # integrate to the output start point
-    n=abs((output_start_time-voi)/step_size)
-    for i in range(int(n)):
-        rates=_update_rates(voi, states,  rates, variables, module, external_variable)
-        delta = list(map(lambda var: var * step_size, rates))
-        states = [sum(x) for x in zip(states, delta)]
-        voi += step_size
-    
-    _update_variables( voi, states, rates, variables, module, external_variable)
-    # save observables
-    _append_current_results(sed_results, current_index, observables, voi, states, variables)
-    
-    # integrate to the output end point
-    if output_step_size > step_size:
-        n = output_step_size/step_size
-    else:
-        n=1
-    for i in range(int(number_of_steps)):
-        for j in range(int(n)):
-            rates=_update_rates( voi, states,  rates, variables, module, external_variable)
+    external_variable=None
+    if external_module:
+            external_variable=functools.partial(external_module.external_variable_ode,result_index=current_index) # current_index has no effect here
+
+    if output_start_time > output_end_time or number_of_steps < 0:
+        raise ValueError('output_start_time must be less than output_end_time and number_of_steps must be greater than 0.')
+    elif output_start_time == output_end_time and number_of_steps>0:
+        raise ValueError('when output_start_time = output_end_time, number_of_steps must be 0.')
+    elif output_start_time < output_end_time and number_of_steps==0:
+        raise ValueError('when output_start_time < output_end_time, number_of_steps must be greater than 0.')
+    elif output_start_time == output_end_time and number_of_steps==0:
+        if voi > output_start_time:
+            raise ValueError('The current value of the independent variable is greater than output_start_time.')
+        elif voi == output_start_time:
+            return current_state
+        else: # voi < output_start_time
+            output_step_size = output_start_time-voi
+            if step_size is None:
+                step_size = output_step_size
+            else:
+                if step_size > output_step_size:
+                    step_size = output_step_size # modify step_size to output_step_size update the states at least once
+            # integrate to the output start point
+            n=abs((output_start_time-voi)/step_size)
+            for i in range(int(n)):       
+                rates=_update_rates(voi, states,  rates, variables, module, external_variable)
+                delta = list(map(lambda var: var * step_size, rates))
+                states = [sum(x) for x in zip(states, delta)]
+                voi += step_size
+            _update_variables( voi, states, rates, variables, module, external_variable)
+            # save observables
+            _append_current_results(sed_results, current_index, observables, voi, states, variables)
+            current_state = (voi, states, rates, variables, current_index, sed_results)
+    else: # number_of_steps > 0 and output_start_time < output_end_time
+        if voi > output_start_time:
+            raise ValueError('The current value of the independent variable is greater than output_start_time.')
+        output_step_size = (output_end_time - output_start_time) / number_of_steps    
+        if step_size is None:
+            step_size = output_step_size
+        else:
+            if step_size > output_step_size:
+                step_size = output_step_size # modify step_size to output_step_size update the states at least once 
+        # integrate to the output start point
+        n=abs((output_start_time-voi)/step_size)
+        for i in range(int(n)):       
+            rates=_update_rates(voi, states,  rates, variables, module, external_variable)
             delta = list(map(lambda var: var * step_size, rates))
             states = [sum(x) for x in zip(states, delta)]
             voi += step_size
-        
-        _update_variables(voi, states, rates, variables, module, external_variable)
+        _update_variables( voi, states, rates, variables, module, external_variable)
         # save observables
-        current_index = current_index+1
         _append_current_results(sed_results, current_index, observables, voi, states, variables)
 
-    current_state = (voi, states, rates, variables, current_index, sed_results)
+        # integrate to the output end point
+        n = output_step_size/step_size
+        for i in range(int(number_of_steps)):
+            for j in range(int(n)):
+                rates=_update_rates( voi, states,  rates, variables, module, external_variable)
+                delta = list(map(lambda var: var * step_size, rates))
+                states = [sum(x) for x in zip(states, delta)]
+                voi += step_size
+
+            _update_variables(voi, states, rates, variables, module, external_variable)
+            # save observables
+            current_index = current_index+1
+            _append_current_results(sed_results, current_index, observables, voi, states, variables)
+
+        current_state = (voi, states, rates, variables, current_index, sed_results)
 
     return current_state
 
 def solve_scipy(module, current_state, observables, output_start_time, output_end_time,
-                number_of_steps, method, integrator_parameters, external_variable=None):
+                number_of_steps, method, integrator_parameters, external_module=None):
     """ Scipy supported solvers.
 
     Parameters
@@ -398,6 +438,8 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     ------
     RuntimeError
         If the scipy.integrate.ode failed, a RuntimeError will be raised.
+    ValueError
+        If output_start_time, output_end_time, or number_of_steps is not valid.
 
     Returns
     -------
@@ -405,36 +447,62 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
         The current state of the module.
         The format is (voi, states, rates, variables, current_index, sed_results).    
     """
-
     voi, states, rates, variables, current_index, sed_results = current_state
-    output_step_size = (output_end_time - output_start_time) / number_of_steps
+    external_variable=None
+    if external_module:
+            external_variable=functools.partial(external_module.external_variable_ode,result_index=current_index) # current_index has no effect here
+    
     # Set the initial conditions and parameters
     solver = ode(_update_rates)
     solver.set_initial_value(states, voi)
     solver.set_f_params(rates, variables, module, external_variable)
     solver.set_integrator(method, **integrator_parameters)
-    
-    # integrate to the output start point
-    n = abs((voi - output_start_time) / output_step_size)
-    for i in range(int(n)):
-        solver.integrate(solver.t + output_step_size)
-        if not solver.successful():
-            raise RuntimeError('scipy.integrate.ode failed.') 
-               
-    _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
-    # save observables
-    _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
-    # integrate to the output end point
-    for i in range(number_of_steps):
-       solver.integrate(solver.t + output_step_size)
-       if not solver.successful():
-           raise RuntimeError('scipy.integrate.ode failed.')
-       _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
-       # save observables
-       current_index = current_index + 1
-       _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
-    
-    current_state = (solver.t, solver.y, rates, variables, current_index, sed_results)
+
+    if output_start_time > output_end_time or number_of_steps < 1:
+        raise ValueError('output_start_time must be less than output_end_time and number_of_steps must be greater than 0.')
+    elif output_start_time == output_end_time and number_of_steps>0:
+        raise ValueError('when output_start_time = output_end_time, number_of_steps must be 0.')
+    elif output_start_time < output_end_time and number_of_steps==0:
+        raise ValueError('when output_start_time < output_end_time, number_of_steps must be greater than 0.')
+    elif output_start_time == output_end_time and number_of_steps==0:
+        if voi > output_start_time:
+            raise ValueError('The current value of the independent variable is greater than output_start_time.')
+        elif voi == output_start_time:
+            return current_state
+        else: # voi < output_start_time
+            output_step_size = output_start_time-voi
+            # integrate to the output start point
+            n = abs((output_start_time - voi) / output_step_size)
+            for i in range(int(n)):
+                solver.integrate(solver.t + output_step_size)
+                if not solver.successful():
+                    raise RuntimeError('scipy.integrate.ode failed.')
+            _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
+            # save observables
+            _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
+            current_state = (solver.t, solver.y, rates, variables, current_index, sed_results)
+    else: # number_of_steps > 0 and output_start_time < output_end_time
+        if voi > output_start_time:
+            raise ValueError('The current value of the independent variable is greater than output_start_time.')       
+        # integrate to the output start point
+        if voi < output_start_time:
+            solver.integrate(solver.t + (output_start_time - voi))
+            if not solver.successful():
+                raise RuntimeError('scipy.integrate.ode failed.')
+        _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
+        # save observables
+        _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
+        # integrate to the output end point
+        output_step_size = (output_end_time - output_start_time) / number_of_steps
+        for i in range(number_of_steps):
+            solver.integrate(solver.t + output_step_size)
+            if not solver.successful():
+                raise RuntimeError('scipy.integrate.ode failed.')
+            _update_variables(solver.t, solver.y, rates, variables, module, external_variable)
+            # save observables
+            current_index = current_index + 1
+            _append_current_results(sed_results, current_index, observables, solver.t, solver.y, variables)
+        current_state = (solver.t, solver.y, rates, variables, current_index, sed_results)
     return current_state
 
 def algebra_evaluation(module, current_state, observables, number_of_steps, external_module=None):

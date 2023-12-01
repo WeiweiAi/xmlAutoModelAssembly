@@ -101,14 +101,13 @@ def getSimSettingFromDict(dict_simulation):
     simSetting.type=dict_simulation['type']
     if simSetting.type=='OneStep':
         simSetting.step=dict_simulation['step']
-        simSetting.number_of_steps=1
     elif simSetting.type=='UniformTimeCourse':
         simSetting.initial_time=dict_simulation['initialTime']
         simSetting.output_start_time=dict_simulation['outputStartTime']
         simSetting.output_end_time=dict_simulation['outputEndTime']
         simSetting.number_of_steps=dict_simulation['numberOfSteps']
     elif simSetting.type=='SteadyState' or simSetting.type=='steadyState':
-        simSetting.number_of_steps=0
+        pass
     elif simSetting.type=='timeCourse':
         pass
     else:
@@ -176,7 +175,7 @@ def load_module(full_path):
 
     return module
 
-def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable, current_state=None,parameters={}):
+def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module, current_state=None,parameters={}):
     """Simulate the model with UniformTimeCourse setting.
     
     Parameters
@@ -190,8 +189,8 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_vari
     observables : dict
         The observables of the simulation, the format is 
         {id:{'name': , 'component': , 'index': , 'type': }}
-    external_variable : function
-        The external variable function for the model
+    external_module : object
+        The External_module_varies object instance for the model
     current_state : tuple
         The current state of the model.
         The format is (voi, states, rates, variables, current_index, sed_results)
@@ -217,43 +216,126 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_vari
     if current_state is None:
         try:
             current_state=initialize_module(mtype,observables,sim_setting.number_of_steps,module,
-                                            sim_setting.initial_time, external_variable,parameters)
+                                            sim_setting.initial_time, external_module,parameters)
         except ValueError as e:
             raise RuntimeError(str(e)) from e          
-
-    output_step_size=(sim_setting.output_end_time-sim_setting.output_start_time)/sim_setting.number_of_steps
 
     if 'step_size' in sim_setting.integrator_parameters:
         step_size=sim_setting.integrator_parameters['step_size']
     else:
-        step_size=output_step_size  
+        step_size=None  
     
     if mtype=='ode':
         if sim_setting.method=='Euler forward method':
-            current_state=solve_euler(module, current_state, observables,
-                                      sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,
-                                      step_size,external_variable)            
+            try:
+                current_state=solve_euler(module, current_state, observables,
+                                          sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,
+                                          step_size,external_module)
+            except ValueError as e:
+                raise RuntimeError(str(e)) from e            
         
         elif sim_setting.method in SCIPY_SOLVERS:
             try:
                 current_state=solve_scipy(module, current_state, observables,
                                           sim_setting.output_start_time, sim_setting.output_end_time,sim_setting.number_of_steps,
-                                          sim_setting.method,sim_setting.integrator_parameters,external_variable)
-            except RuntimeError as e:
-                raise e from e
+                                          sim_setting.method,sim_setting.integrator_parameters,external_module)
+            except Exception as e:
+                raise RuntimeError(str(e)) from e 
         else:
             print('The method {} is not supported!'.format(sim_setting.method))
             raise RuntimeError('The method {} is not supported!'.format(sim_setting.method))
     elif mtype=='algebraic':
         current_state=algebra_evaluation(module,current_state,observables,
-                                         sim_setting.number_of_steps,external_variable)
+                                         sim_setting.number_of_steps,external_module)
     else:
         print('The model type {} is not supported!'.format(mtype)) # should not reach here
         raise RuntimeError('The model type {} is not supported!'.format(mtype))
     
     return current_state
 
-def sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters={}):
+def sim_OneStep(mtype, module, sim_setting, observables, external_module, current_state=None,parameters={}):
+    """Simulate the model with OneStep setting.
+    
+    Parameters
+    ----------
+    mtype : str
+        The type of the model ('ode' or 'algebraic')
+    module : module
+        The module containing the Python code
+    sim_setting : SimSettings
+        The simulation settings
+    observables : dict
+        The observables of the simulation, the format is 
+        {id:{'name': , 'component': , 'index': , 'type': }}
+    external_module : object
+        The External_module_varies object instance for the model
+    current_state : tuple
+        The current state of the model.
+        The format is (voi, states, rates, variables, current_index, sed_results)
+    parameters : dict
+        The parameters of the model
+        {id:{'name': , 'component': , 'index': , 'type': , 'value': }}
+
+    Raises
+    ------
+    RuntimeError
+        If the method is not supported
+        If initialize_module fails
+        If solve_scipy fails
+
+    Returns
+    -------
+    current_state : tuple
+        The current state of the model.
+        The format is (voi, states, rates, variables, current_index, sed_results)
+
+    """
+
+    if current_state is None:
+        try:
+            current_state=initialize_module(mtype,observables,0,module,
+                                            0, external_module,parameters)
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e          
+
+    if 'step_size' in sim_setting.integrator_parameters:
+        step_size=sim_setting.integrator_parameters['step_size']
+    else:
+        step_size=None  
+    
+    step=sim_setting.step
+    output_start_time=current_state[0]+step
+    output_end_time=output_start_time
+
+    if mtype=='ode':
+        if sim_setting.method=='Euler forward method':
+            try:
+                current_state=solve_euler(module, current_state, observables,
+                                          output_start_time, output_end_time,0,
+                                          step_size,external_module)
+            except ValueError as e:
+                raise RuntimeError(str(e)) from e            
+        
+        elif sim_setting.method in SCIPY_SOLVERS:
+            try:
+                current_state=solve_scipy(module, current_state, observables,
+                                          output_start_time, output_end_time,0,
+                                          sim_setting.method,sim_setting.integrator_parameters,external_module)
+            except Exception as e:
+                raise RuntimeError(str(e)) from e 
+        else:
+            print('The method {} is not supported!'.format(sim_setting.method))
+            raise RuntimeError('The method {} is not supported!'.format(sim_setting.method))
+    elif mtype=='algebraic':
+        current_state=algebra_evaluation(module,current_state,observables,
+                                         0,external_module)
+    else:
+        print('The model type {} is not supported!'.format(mtype)) # should not reach here
+        raise RuntimeError('The model type {} is not supported!'.format(mtype))
+    
+    return current_state
+
+def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters={}):
     """Simulate the model with TimeCourse setting.
 
     Parameters
@@ -266,8 +348,8 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,cu
         The simulation settings
     observables : dict
         The observables of the simulation, the format is {id:{'name': , 'component': , 'index': , 'type': }}
-    external_variable : function
-        The external variable function for the model
+   external_module : object
+       The External_module_varies object instance for the model
     current_state : tuple
         The current state of the model.
         The format is (voi, states, rates, variables, current_index, sed_results)
@@ -291,41 +373,59 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,cu
     """
     
     number_of_steps=len(sim_setting.tspan)-1
+    if number_of_steps<0:
+        raise RuntimeError('The time points should be greater than 0!')
             
     if current_state is None:
         try:
             current_state=initialize_module(mtype,observables,number_of_steps,module,
-                                            0,external_variable,parameters)
+                                            0,external_module,parameters)
         except ValueError as e:
             raise RuntimeError(str(e)) from e
-
-    output_step_size=(sim_setting.tspan[-1]-sim_setting.tspan[0])/number_of_steps
 
     if 'step_size' in sim_setting.integrator_parameters:
         step_size=sim_setting.integrator_parameters['step_size']
     else:
-        step_size=output_step_size  
+        step_size=None  
     
     if mtype=='ode':
         if sim_setting.method=='Euler forward method':
             for i in range(number_of_steps):
-                current_state=solve_euler(module,current_state,observables,
-                                          sim_setting.tspan[i],sim_setting.tspan[i+1],1,
-                                          step_size,external_variable)                   
+                try:
+                    current_state=solve_euler(module,current_state,observables,
+                                              sim_setting.tspan[i],sim_setting.tspan[i+1],1,
+                                              step_size,external_module)
+                except ValueError as e:
+                    raise RuntimeError(str(e)) from e
+            if number_of_steps==0:
+                try:
+                    current_state=solve_euler(module,current_state,observables,
+                                              sim_setting.tspan[0],sim_setting.tspan[0],0,
+                                              step_size,external_module)
+                except ValueError as e:
+                    raise RuntimeError(str(e)) from e
+                                 
         elif sim_setting.method in SCIPY_SOLVERS:
             for i in range(number_of_steps):
                 try:                      
                     current_state=solve_scipy(module,current_state,observables,
                                               sim_setting.tspan[i],sim_setting.tspan[i+1],1,
-                                              sim_setting.method,sim_setting.integrator_parameters,external_variable)
-                except RuntimeError as e:
+                                              sim_setting.method,sim_setting.integrator_parameters,external_module)
+                except Exception as e:
+                    raise e from e
+            if number_of_steps==0:
+                try:
+                    current_state=solve_scipy(module,current_state,observables,
+                                              sim_setting.tspan[0],sim_setting.tspan[0],0,
+                                              sim_setting.method,sim_setting.integrator_parameters,external_module)
+                except Exception as e:
                     raise e from e
         else:
             print('The method {} is not supported!'.format(sim_setting.method))
             raise RuntimeError('The method {} is not supported!'.format(sim_setting.method))
     elif mtype=='algebraic':
         current_state=algebra_evaluation(module,current_state,observables,
-                                         number_of_steps,external_variable)
+                                         number_of_steps,external_module)
     else:
         print('The model type {} is not supported!'.format(mtype))
         raise RuntimeError('The model type {} is not supported!'.format(mtype))
@@ -582,10 +682,14 @@ class External_module_varies:
     
     Notes
     -----
-    This class only allows the model to take inputs, 
+    This class allows the model to take inputs as constant, 
+    inputs as a list or inputs as a function, 
     while the inputs do not depend on the model variables.
-    The inputs are constant during the simulation.
-        
+    If the inputs are given as a list, 
+    the list should have the same length as the numberOfSteps + 1.
+    If the inputs are given as a function,
+    (1) for algebraic, take the index of the results as the input and return the value;
+    (2) for ode, take the voi as the input and return the value.   
     """
     def __init__(self, param_indices, param_vals):
         """
@@ -809,7 +913,11 @@ def _get_index_type_for_variable(analyser, variable):
         component_name=var.parent().name()
         if component_name==variable.parent().name() and var_name==variable.name():
             return avar.index(), AnalyserVariable.typeAsString(avar.type())  
-          
+        else:
+            for i in range(variable.equivalentVariableCount()):
+                eqv = variable.equivalentVariable(i)
+                if component_name==eqv.parent().name() and var_name==eqv.name():
+                    return avar.index(), AnalyserVariable.typeAsString(avar.type())  
     return -1, 'unknown'
 
 def _get_index_type_for_equivalent_variable(analyser, variable):
@@ -834,7 +942,7 @@ def _get_index_type_for_equivalent_variable(analyser, variable):
     index, vtype = _get_index_type_for_variable(analyser,variable)
     if vtype != 'unknown':
         return index, vtype
-    else:
+    else: # search through equivalent variables; should not reach here? 
         for i in range(variable.equivalentVariableCount()):
             eqv = variable.equivalentVariable(i)
             index, vtype = _get_index_type_for_variable(analyser, eqv)
