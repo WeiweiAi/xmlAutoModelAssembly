@@ -432,7 +432,7 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
     
     return current_state
 
-def sim_SteadyState(mtype, module, sim_setting, observables, external_variable, current_state=None,parameters={}):
+def sim_SteadyState(mtype, module, sim_setting, observables, external_module, current_state=None,parameters={}):
     """Simulate the model with UniformTimeCourse setting.
     
     Parameters
@@ -446,8 +446,8 @@ def sim_SteadyState(mtype, module, sim_setting, observables, external_variable, 
     observables : dict
         The observables of the simulation, the format is 
         {id:{'name': , 'component': , 'index': , 'type': }}
-    external_variable : function
-        The external variable function for the model
+    external_module : object
+        The External_module_varies object instance for the model
     current_state : tuple
         The current state of the model.
         The format is (voi, states, rates, variables, current_index, sed_results)
@@ -473,7 +473,7 @@ def sim_SteadyState(mtype, module, sim_setting, observables, external_variable, 
     if current_state is None:
         try:
             current_state=initialize_module(mtype,observables,sim_setting.number_of_steps,module,
-                                            sim_setting.initial_time, external_variable,parameters)
+                                            sim_setting.initial_time, external_module,parameters)
         except ValueError as e:
             raise RuntimeError(str(e)) from e          
     sed_results=current_state[-1]
@@ -491,13 +491,13 @@ def sim_SteadyState(mtype, module, sim_setting, observables, external_variable, 
             if sim_setting.method=='Euler forward method':
                 current_state=solve_euler(module, current_state, observables,
                                           t0, tf,sim_setting.number_of_steps,
-                                          step_size,external_variable)            
+                                          step_size,external_module)            
 
             elif sim_setting.method in SCIPY_SOLVERS:
                 try:
                     current_state=solve_scipy(module, current_state, observables,
                                               t0, tf, sim_setting.number_of_steps,
-                                              sim_setting.method,sim_setting.integrator_parameters,external_variable)
+                                              sim_setting.method,sim_setting.integrator_parameters,external_module)
                 except RuntimeError as e:
                     raise e from e
             else:
@@ -510,7 +510,7 @@ def sim_SteadyState(mtype, module, sim_setting, observables, external_variable, 
             tf=tf+100
     elif mtype=='algebraic':
         current_state=algebra_evaluation(module,current_state,observables,
-                                         sim_setting.number_of_steps,external_variable)
+                                         sim_setting.number_of_steps,external_module)
     else:
         print('The model type {} is not supported!'.format(mtype)) # should not reach here
         raise RuntimeError('The model type {} is not supported!'.format(mtype))

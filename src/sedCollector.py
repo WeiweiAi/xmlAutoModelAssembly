@@ -644,7 +644,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)
         except ValueError as exception:
             raise exception
-        if fitExperiment.isSetName (): # temporary solution for the case that a variant model is used for this fit experiment
+        if fitExperiment.isSetName (): # temporary solution in case that a variant model is used for this fit experiment
             modelReference=fitExperiment.getName ()
             model=doc.getModel(modelReference)
         fitExperiments[fitExperiment.getId()]['model']=model

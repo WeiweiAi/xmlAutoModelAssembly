@@ -188,7 +188,7 @@ def report_task(doc,task, variable_results, base_out_path, rel_out_path, report_
 
     return report_results
 
-def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info={},external_variables_values=[]):
+def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info={},external_variables_values=[],ss_time={}):
     """
     Execute a SedTask of type ParameterEstimationTask.
     The model is assumed to be in CellML format.
@@ -234,14 +234,14 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     bounds=Bounds(adjustables[0],adjustables[1])
     initial_value=adjustables[2]
 
-    res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc), 
+    res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time), 
                  bounds=bounds, ftol=1e-12,gtol=1e-12,xtol=1e-12)
 
     return res
 
-def objective_function(param_vals, external_variables_values, fitExperiments, doc):
+def objective_function(param_vals, external_variables_values, fitExperiments, doc, ss_time):
     residuals_sum=0
-    for fitExperiment in fitExperiments.values():
+    for fitid,fitExperiment in fitExperiments.items():
         sub_param_vals=[]
         external_variables_info=fitExperiment['external_variables_info']
         cellml_model=fitExperiment['cellml_model']
@@ -253,13 +253,6 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
         parameters_values=fitExperiment['parameters_values']         
         for param_index in fitExperiment['adj_param_indices']:
             sub_param_vals.append(param_vals[param_index])
-
-        external_variables_values_extends=external_variables_values+sub_param_vals+parameters_values    
-        try:
-            external_variable=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values_extends)
-        except ValueError as exception:
-            print(exception)
-            raise RuntimeError(exception)
         simulation_type=fitExperiment['type']
         sim_setting=fitExperiment['sim_setting']
         observables_info=fitness_info[0]
@@ -268,12 +261,37 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
         observables_weight=fitness_info[1]
         observables_exp=fitness_info[2]       
         if simulation_type=='timeCourse':
-            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+            external_variables_values_extends=external_variables_values+sub_param_vals+parameters_values    
+            try:
+                external_module=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values_extends)
+            except ValueError as exception:
+                print(exception)
+                raise RuntimeError(exception)
+            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+            sed_results = current_state[-1]
         elif simulation_type=='steadyState':
-            current_state=sim_SteadyState(mtype, module, sim_setting, observables, external_variable,current_state=None,parameters=parameters)
+            observable_exp_temp=observables_exp[list(observables_exp.keys())[0]]
+            for i in range(len(observable_exp_temp)):
+                sim_setting.tspan=[ss_time[fitid]]
+                parameters_value=[]
+                for parameter in parameters_values:
+                    parameters_value.append(parameter[i])
+                external_variables_values_extends=external_variables_values+sub_param_vals+parameters_value
+                try:
+                    external_module=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values_extends)
+                except ValueError as exception:
+                    print(exception)
+                    raise RuntimeError(exception)
+                if i==0:
+                    current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                    sed_results = current_state[-1]
+                else:
+                    current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
+                    for key, value in current_state[-1].items():
+                        sed_results[key]=numpy.append(sed_results[key],value)
         else:
             raise RuntimeError('Simulation type not supported!')
-        sed_results = current_state[-1]
+        
         residuals={}
         for key, exp_value in observables_exp.items():
             dataGenerator=doc.getDataGenerator(key)
