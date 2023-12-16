@@ -4,12 +4,12 @@ from .sedEditor import get_dict_algorithm
 from .optimiser import get_KISAO_parameters_opt
 from .analyser import analyse_model_full, get_mtype,parse_model
 from .coder import writePythonCode
-from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, SimSettings, get_KISAO_parameters, sim_TimeCourse,sim_SteadyState,get_externals_varies
+from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, sim_OneStep, SimSettings, get_KISAO_parameters, sim_TimeCourse,sim_SteadyState,get_externals_varies
 from .sedReporter import exec_report
 import tempfile
 import os
 import sys
-from scipy.optimize import minimize, Bounds,LinearConstraint,least_squares
+from scipy.optimize import minimize, Bounds,LinearConstraint,least_squares,shgo,dual_annealing,differential_evolution
 import numpy
 import copy
 
@@ -208,6 +208,8 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         The external variables to be specified, in the format of {id:{'component': , 'name': }}
     external_variables_values: list, optional
         The values of the external variables to be specified [value1, value2, ...]
+    ss_time: dict, optional
+        The time point for steady state simulation, in the format of {fitid:time}
 
     Raises
     ------
@@ -233,14 +235,57 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     fitExperiments,adjustables=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
     bounds=Bounds(adjustables[0],adjustables[1])
     initial_value=adjustables[2]
-
-    res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time), 
-                 bounds=bounds, ftol=1e-12,gtol=1e-12,xtol=1e-12)
-
+    if method=='global optimization algorithm':
+        results = dict()
+        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+        results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+        results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+        # print the best result
+        best_result = None
+        for key, result in results.items():
+            print(key, result)
+            if best_result is None or result.fun < best_result.fun:
+                best_result = result
+        print(best_result)
+        return best_result
+    else:
+        res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time), 
+                 bounds=bounds, ftol=1e-15,gtol=None,xtol=None,max_nfev=1000*len(initial_value))
+        print(res)
     return res
 
 def objective_function(param_vals, external_variables_values, fitExperiments, doc, ss_time):
+    """ Objective function for parameter estimation task.
+    The model is assumed to be in CellML format.
+
+    Parameters
+    ----------
+    param_vals: list
+        The values of the adjustable parameters to be specified [value1, value2, ...]
+    external_variables_values: list
+        The values of the external variables to be specified [value1, value2, ...]
+    fitExperiments: dict
+        The fit experiments to be specified, 
+        in the format of {fitid:{'external_variables_info': , 'cellml_model': , 'analyser': , 
+        'mtype': , 'module': , 'fitness_info': , 'parameters': , 'parameters_values': , 
+        'adj_param_indices': , 'type': , 'sim_setting': }}
+    doc: :obj:`SedDocument`
+        An instance of SedDocument
+    ss_time: dict
+        The time point for steady state simulation, in the format of {fitid:time}
+
+    Raises
+    ------
+    RuntimeError
+        If any operation failed.
+
+    Returns
+    -------
+    float
+        The sum of residuals of all fit experiments.
+    """
     residuals_sum=0
+    sed_results={}
     for fitid,fitExperiment in fitExperiments.items():
         sub_param_vals=[]
         external_variables_info=fitExperiment['external_variables_info']
@@ -268,11 +313,11 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
                 print(exception)
                 raise RuntimeError(exception)
             current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
-            sed_results = current_state[-1]
+            sed_results = copy.deepcopy(current_state[-1])
         elif simulation_type=='steadyState':
             observable_exp_temp=observables_exp[list(observables_exp.keys())[0]]
-            for i in range(len(observable_exp_temp)):
-                sim_setting.tspan=[ss_time[fitid]]
+            for i in range(len(observable_exp_temp)): # assume all observables and experimental conditions have the same number of data points
+                sim_setting.step=ss_time[fitid]
                 parameters_value=[]
                 for parameter in parameters_values:
                     parameters_value.append(parameter[i])
@@ -283,10 +328,10 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
                     print(exception)
                     raise RuntimeError(exception)
                 if i==0:
-                    current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
-                    sed_results = current_state[-1]
+                    current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                    sed_results = copy.deepcopy(current_state[-1])
                 else:
-                    current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
+                    current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
                     for key, value in current_state[-1].items():
                         sed_results[key]=numpy.append(sed_results[key],value)
         else:

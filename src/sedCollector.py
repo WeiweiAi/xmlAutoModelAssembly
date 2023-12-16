@@ -757,7 +757,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             module=load_module(full_path)
             os.close(tempfile_py)
             # and delete temporary file
-          #  os.remove(full_path)
+            os.remove(full_path)
 
         fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp)
         fitExperiments[fitExperiment.getId()]['sim_setting']=sim_setting

@@ -1,0 +1,756 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sedML xmlns="http://sed-ml.org/sed-ml/level1/version4" level="1" version="4">
+  <listOfDataDescriptions>
+    <dataDescription id="EXPA" name="experiment A" format="csv" source="data_SLC4_BG_ss_EXPA.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPA_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPA_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPA_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPA_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPA_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPA_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+    <dataDescription id="EXPB" name="experiment B" format="csv" source="data_SLC4_BG_ss_EXPB.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPB_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPB_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPB_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPB_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPB_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPB_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+    <dataDescription id="EXPC" name="experiment C" format="csv" source="data_SLC4_BG_ss_EXPC.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPC_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPC_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPC_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPC_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPC_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPC_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+    <dataDescription id="EXPD" name="experiment D" format="csv" source="data_SLC4_BG_ss_EXPD.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPD_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPD_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPD_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPD_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPD_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPD_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+    <dataDescription id="EXPE" name="experiment E" format="csv" source="data_SLC4_BG_ss_EXPE.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPE_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPE_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPE_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPE_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPE_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPE_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+    <dataDescription id="EXPF" name="experiment F" format="csv" source="data_SLC4_BG_ss_EXPF.csv">
+      <dimensionDescription xmlns="http://www.numl.org/numl/level1/version1">
+        <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="Index" name="Index" indexType="integer">
+          <compositeDescription xmlns="http://www.numl.org/numl/level1/version1" id="ColumnIds" name="ColumnIds" indexType="string">
+            <atomicDescription xmlns="http://www.numl.org/numl/level1/version1" valueType="double"/>
+          </compositeDescription>
+        </compositeDescription>
+      </dimensionDescription>
+      <listOfDataSources>
+        <dataSource id="EXPF_time">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="t"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPF_q_Ai">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ai"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPF_q_Ao">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Ao"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPF_q_Bi">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bi"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPF_q_Bo">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="q_Bo"/>
+          </listOfSlices>
+        </dataSource>
+        <dataSource id="EXPF_v_ss">
+          <listOfSlices>
+            <slice reference="ColumnIds" value="vss"/>
+          </listOfSlices>
+        </dataSource>
+      </listOfDataSources>
+    </dataDescription>
+  </listOfDataDescriptions>
+  <listOfModels>
+    <model id="SLCT4_BG_ss_test" language="urn:sedml:language:cellml" source="SLCT4_BG_ss_test.cellml"/>
+    <model id="SLCT4_BG_ss_test_A" language="urn:sedml:language:cellml" source="SLCT4_BG_ss_test_A.cellml"/>
+    <model id="SLCT4_BG_ss_test_B" language="urn:sedml:language:cellml" source="SLCT4_BG_ss_test_B.cellml"/>
+  </listOfModels>
+  <listOfTasks>
+    <parameterEstimationTask id="pe_task_SLCT4_BG_ss_test_B">
+      <algorithm name="global optimization algorithm" kisaoID="KISAO:0000472"/>
+      <leastSquareObjectiveFunction/>
+      <listOfAdjustableParameters>
+        <adjustableParameter id="K_Ai" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_Ai&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_Bi" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_Bi&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_5" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_5&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_6" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_6&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_7" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_7&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_8" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_8&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_9" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_9&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="K_10" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;K_10&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="kappa_re5" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;kappa_re5&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit3"/>
+            <experimentReference experimentId="fit6"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+        <adjustableParameter id="kappa_re6" initialValue="0.1" modelReference="SLCT4_BG_ss_test_B" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_param&quot;]/cellml:variable[@name=&quot;kappa_re6&quot;]/@initial_value">
+          <bounds lowerBound="0.0001" upperBound="1000000000000" scale="linear"/>
+          <listOfExperimentReferences>
+            <experimentReference experimentId="fit1"/>
+            <experimentReference experimentId="fit2"/>
+            <experimentReference experimentId="fit4"/>
+            <experimentReference experimentId="fit5"/>
+          </listOfExperimentReferences>
+        </adjustableParameter>
+      </listOfAdjustableParameters>
+      <listOfFitExperiments>
+        <fitExperiment id="fit1" name="SLCT4_BG_ss_test_A" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPA_time" target="dg_EXPA_time" type="time"/>
+            <fitMapping dataSource="EXPA_q_Ai" target="dg_EXPA_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPA_q_Ao" target="dg_EXPA_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPA_q_Bi" target="dg_EXPA_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPA_q_Bo" target="dg_EXPA_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPA_v_ss" target="dg_EXPA_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+        <fitExperiment id="fit2" name="SLCT4_BG_ss_test_A" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPB_time" target="dg_EXPB_time" type="time"/>
+            <fitMapping dataSource="EXPB_q_Ai" target="dg_EXPB_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPB_q_Ao" target="dg_EXPB_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPB_q_Bi" target="dg_EXPB_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPB_q_Bo" target="dg_EXPB_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPB_v_ss" target="dg_EXPB_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+        <fitExperiment id="fit3" name="SLCT4_BG_ss_test_B" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPC_time" target="dg_EXPC_time" type="time"/>
+            <fitMapping dataSource="EXPC_q_Ai" target="dg_EXPC_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPC_q_Ao" target="dg_EXPC_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPC_q_Bi" target="dg_EXPC_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPC_q_Bo" target="dg_EXPC_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPC_v_ss" target="dg_EXPC_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+        <fitExperiment id="fit4" name="SLCT4_BG_ss_test_A" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPD_time" target="dg_EXPD_time" type="time"/>
+            <fitMapping dataSource="EXPD_q_Ai" target="dg_EXPD_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPD_q_Ao" target="dg_EXPD_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPD_q_Bi" target="dg_EXPD_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPD_q_Bo" target="dg_EXPD_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPD_v_ss" target="dg_EXPD_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+        <fitExperiment id="fit5" name="SLCT4_BG_ss_test_A" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPE_time" target="dg_EXPE_time" type="time"/>
+            <fitMapping dataSource="EXPE_q_Ai" target="dg_EXPE_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPE_q_Ao" target="dg_EXPE_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPE_q_Bi" target="dg_EXPE_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPE_q_Bo" target="dg_EXPE_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPE_v_ss" target="dg_EXPE_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+        <fitExperiment id="fit6" name="SLCT4_BG_ss_test_B" type="timeCourse">
+          <algorithm name="VODE" kisaoID="KISAO:0000535"/>
+          <listOfFitMappings>
+            <fitMapping dataSource="EXPF_time" target="dg_EXPF_time" type="time"/>
+            <fitMapping dataSource="EXPF_q_Ai" target="dg_EXPF_q_Ai" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPF_q_Ao" target="dg_EXPF_q_Ao" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPF_q_Bi" target="dg_EXPF_q_Bi" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPF_q_Bo" target="dg_EXPF_q_Bo" type="experimentalCondition"/>
+            <fitMapping dataSource="EXPF_v_ss" target="dg_EXPF_v_ss" type="observable" weight="1"/>
+          </listOfFitMappings>
+        </fitExperiment>
+      </listOfFitExperiments>
+    </parameterEstimationTask>
+  </listOfTasks>
+  <listOfDataGenerators>
+    <dataGenerator id="dg_EXPA_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPA_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPA_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPA_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPA_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPA_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPA_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPA_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPA_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPA_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPA_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPA_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPA_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPB_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPB_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPB_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPB_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPB_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPB_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPB_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPB_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPC_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPC_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPC_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPC_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPC_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPC_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPC_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPC_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPD_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPD_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPD_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPD_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPD_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPD_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPD_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPD_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPE_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPE_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPE_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPE_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPE_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPE_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPE_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPE_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_time" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPF_time </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_time" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_test&quot;]/cellml:variable[@name=&quot;time&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_q_Ai" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPF_q_Ai </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_q_Ai" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ai&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_q_Ao" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPF_q_Ao </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_q_Ao" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Ao&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_q_Bi" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPF_q_Bi </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_q_Bi" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bi&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_q_Bo" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_EXPF_q_Bo </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_q_Bo" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;q_Bo&quot;]/@initial_value" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_EXPF_v_ss" name="dataGenerator1">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <apply>
+          <abs/>
+          <ci> var_EXPF_v_ss </ci>
+        </apply>
+      </math>
+      <listOfVariables>
+        <variable id="var_EXPF_v_ss" target="/cellml:model/cellml:component[@name=&quot;SLCT4_BG_ss_io&quot;]/cellml:variable[@name=&quot;v_ss&quot;]" taskReference="pe_task_SLCT4_BG_ss_test_B" modelReference="SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_obj">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_obj </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_obj" symbol="sedml:parameterestimation:objective_value" taskReference="pe_task_SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+    <dataGenerator id="dg_optimal">
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <ci> var_optimal </ci>
+      </math>
+      <listOfVariables>
+        <variable id="var_optimal" symbol="sedml:parameterestimation:optimal_adjustableParameters" taskReference="pe_task_SLCT4_BG_ss_test_B"/>
+      </listOfVariables>
+    </dataGenerator>
+  </listOfDataGenerators>
+  <listOfOutputs>
+    <report id="report_pe_task_SLCT4_BG_ss_test_B" name="report_pe_task_SLCT4_BG_ss_test_B">
+      <listOfDataSets>
+        <dataSet id="dataset_EXPA_v_ss" label="EXPA_v_ss" dataReference="dg_EXPA_v_ss"/>
+        <dataSet id="dataset_EXPB_v_ss" label="EXPB_v_ss" dataReference="dg_EXPB_v_ss"/>
+        <dataSet id="dataset_EXPC_v_ss" label="EXPC_v_ss" dataReference="dg_EXPC_v_ss"/>
+        <dataSet id="dataset_EXPD_v_ss" label="EXPD_v_ss" dataReference="dg_EXPD_v_ss"/>
+        <dataSet id="dataset_EXPE_v_ss" label="EXPE_v_ss" dataReference="dg_EXPE_v_ss"/>
+        <dataSet id="dataset_EXPF_v_ss" label="EXPF_v_ss" dataReference="dg_EXPF_v_ss"/>
+        <dataSet id="dataset_obj" label="OBJ" dataReference="dg_obj"/>
+        <dataSet id="dataset_optimal" label="ADJ" dataReference="dg_optimal"/>
+      </listOfDataSets>
+    </report>
+  </listOfOutputs>
+</sedML>

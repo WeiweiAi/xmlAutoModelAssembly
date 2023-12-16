@@ -14,7 +14,7 @@ external_variable_component='SLC_template3_ss'
 external_variables_info=[(external_variable_component,external_variable_name)]
 exec_sed_doc(doc, working_dir,model_base_dir, base_out_path, rel_out_path=None, external_variables_info=[],external_variables_values=[], indent=0)
 """
-filename='./csv/SLCT4_BG_ss_test_pe.sedml'
+filename='./csv/SLCT4_BG_ss_test_pe_time_global.sedml'
 doc=read_sedml(filename)
 print(validate_sedml(filename))
 working_dir='./csv'
@@ -25,18 +25,10 @@ for i_task, task in enumerate(doc.getListOfTasks()):
     current_state, variable_results= exec_task(doc,task,working_dir,external_variables_info={},external_variables_values=[],current_state=None)
     report_task(doc,task, variable_results, base_out_path, rel_out_path=None, report_formats =['csv'])
 """
-def func_qi(x):
-    if x<26:
-        return x
-    else:
-        return 0
-def func_qo(x):
-    if x<26:
-        return 0
-    else:
-        return x-26
 
 for i_task, task in enumerate(doc.getListOfTasks()):
-    res= exec_parameterEstimationTask(doc,task, working_dir, external_variables_info={}, external_variables_values=[])
+    #ss_time={'fit1':1000,'fit2':1000}
+    ss_time={}
+    res= exec_parameterEstimationTask(doc,task, working_dir, external_variables_info={}, external_variables_values=[],ss_time={})
     print(res)
     #report_task(doc,task, variable_results, base_out_path, rel_out_path=None, report_formats =['csv'])

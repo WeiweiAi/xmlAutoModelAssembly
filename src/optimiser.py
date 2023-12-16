@@ -27,9 +27,13 @@ def get_KISAO_parameters_opt(algorithm):
                 opt_parameters['maxiter'] = float(p['value'])
             elif p['kisaoID'] == 'KISAO:0000597':
                 opt_parameters['tol'] = float(p['value'])
+    elif algorithm['kisaoID'] == 'KISAO:0000472':
+        return method, None
+    elif algorithm['kisaoID'] == 'KISAO:0000471':
+        return method, None
     else:
         print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
-        return None, None
+        return method, None
     
     return method, opt_parameters
 class ExperimentData(dict):

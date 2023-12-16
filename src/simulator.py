@@ -707,21 +707,25 @@ class External_module_varies:
     
     def external_variable_algebraic(self, variables,index,result_index=0):
         temp=self.param_vals[self.param_indices.index(index)]
-        if isinstance(temp, (int, float)):
+        if isinstance(temp,  (int, float, numpy.int32, numpy.int64, numpy.float32, numpy.float64)):
             return temp
         elif isinstance(temp, list) or isinstance(temp, numpy.ndarray):
             return temp[result_index]
         elif isinstance(temp,types.FunctionType):
             return temp(result_index)
+        else:
+            raise ValueError("The external variable is not supported!")
 
     def external_variable_ode(self,voi, states, rates, variables,index,result_index=0):
         temp=self.param_vals[self.param_indices.index(index)]
-        if isinstance(temp, (int, float)):
+        if isinstance(temp,  (int, float, numpy.int32, numpy.int64, numpy.float32, numpy.float64)):
             return temp
-        elif isinstance(temp, list):
+        elif isinstance(temp, list) or isinstance(temp, numpy.ndarray):
             return temp[result_index]
         elif isinstance(temp,types.FunctionType):
             return temp(voi)
+        else:
+            raise ValueError("The external variable is not supported!")
 
 def get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values):
     """ Get the external variable function for the model.
