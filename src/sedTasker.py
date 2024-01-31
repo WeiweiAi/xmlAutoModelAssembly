@@ -1,15 +1,15 @@
-from .sedCollector import get_models_referenced_by_task, get_variables_for_task, get_adjustableParameters, get_fit_experiments, get_df_from_dataDescription,get_fit_experiments_1
+from .sedCollector import get_models_referenced_by_task, get_variables_for_task, get_df_from_dataDescription, get_fit_experiments_1
 from .sedModel_changes import resolve_model_and_apply_xml_changes, get_variable_info_CellML,calc_data_generator_results
 from .sedEditor import get_dict_algorithm
 from .optimiser import get_KISAO_parameters_opt
 from .analyser import analyse_model_full, get_mtype,parse_model
 from .coder import writePythonCode
-from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, get_externals, sim_OneStep, SimSettings, get_KISAO_parameters, sim_TimeCourse,sim_SteadyState,get_externals_varies
+from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, sim_OneStep, sim_TimeCourse,get_externals_varies
 from .sedReporter import exec_report
 import tempfile
 import os
 import sys
-from scipy.optimize import minimize, Bounds,LinearConstraint,least_squares,shgo,dual_annealing,differential_evolution
+from scipy.optimize import Bounds,least_squares,shgo,dual_annealing,differential_evolution
 import numpy
 import copy
 import math
@@ -73,7 +73,7 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
             if analyser:
                 mtype=get_mtype(analyser)
-                external_variable=get_externals(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
+                external_variable=get_externals_varies(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
                 # write Python code to a temporary file
                 tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
                 writePythonCode(analyser, full_path)
@@ -106,6 +106,12 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
     if sim_setting.type=='UniformTimeCourse':
         try:
             current_state=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_variable, current_state,parameters={})
+        except RuntimeError as exception:
+            print(exception)
+            raise RuntimeError(exception)
+    elif sim_setting.type=='OneStep':
+        try:
+            current_state=sim_OneStep(mtype, module, sim_setting, observables, external_variable, current_state,parameters={})
         except RuntimeError as exception:
             print(exception)
             raise RuntimeError(exception)
