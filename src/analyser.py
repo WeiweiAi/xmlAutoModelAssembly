@@ -89,7 +89,7 @@ def parse_model(filename, strict_mode=False):
         model = parser.parseModel(f.read())
     issues = _dump_issues("parse_model", parser)
     if issues !='':
-        return None, issues
+        return model, issues
     else:
         issues="parse_model: No issues found!<br>"
         return model, issues
