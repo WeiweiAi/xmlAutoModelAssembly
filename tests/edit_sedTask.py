@@ -10,16 +10,19 @@ dict_sedDocument=create_dict_sedDocment()
 
 # ********** The following is to add the task information to the dictionary **********
 
+# Note: the following is an example, you can modify it to add more tasks
+# Note: the valid sedml id should start with a letter, and only contain letters, numbers, and underscores
+
 # This is the model id in the sedml file, which is also the task id and output id
 model_name='SLCT3_BG_test'
 # This is the model file name, assuming in the same folder with the sedml file
-model_source='SLCT3_BG_test.cellml' 
+model_source='Boron-HCO3.cellml' 
 # This is the sedml file (relative) path and name
 sedFilename='./csv/SLCT3_BG_test.sedml' 
 # This is to modify the model parameters if needed
 changes={'id':{'component':'SLCT3_BG_io','name':'q_Ai','newValue':'200'}
          } 
-# This is the output of the simulation
+# This is the output of the simulation, and the key is part of the output id
 outputs={'v_Ai':{'component':'SLCT3_BG_test','name':'v_Ai','scale':1.0}, 
          'v_Ao':{'component':'SLCT3_BG_test','name':'v_Ao'},
          't':{'component':'SLCT3_BG','name':'t'}
