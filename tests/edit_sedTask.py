@@ -7,6 +7,8 @@ from src.sedEditor import create_sedDocment
 # This is a template for creating a sedml file
 # Create a dictionary for the sedml file
 dict_sedDocument=create_dict_sedDocment()
+# This is the sedml file (relative) path and name
+sedFilename='./csv/SLCT3_BG_test.sedml' 
 
 # ********** The following is to add the task information to the dictionary **********
 
@@ -16,9 +18,7 @@ dict_sedDocument=create_dict_sedDocment()
 # This is the model id in the sedml file, which is also the task id and output id
 model_name='SLCT3_BG_test'
 # This is the model file name, assuming in the same folder with the sedml file
-model_source='Boron-HCO3.cellml' 
-# This is the sedml file (relative) path and name
-sedFilename='./csv/SLCT3_BG_test.sedml' 
+model_source='SLCT3_BG_test.cellml' 
 # This is to modify the model parameters if needed
 changes={'id':{'component':'SLCT3_BG_io','name':'q_Ai','newValue':'200'}
          } 
