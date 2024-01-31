@@ -224,15 +224,16 @@ def add_sedTask2dict(dict_sedDocument, model_name, model_source,changes,simSetti
     dict_report={'id':report_id,'name':report_id,'listOfDataSets':[]}
 
     for id,output in outputs.items():
-        dict_variable={'id':id,'target':target_component_variable(output['component'], output['name']),'modelReference':model_name,'taskReference':task_id}
-        dataGenerator_id = 'dg_'+ id
+        var_id = model_name + '_'+ id
+        dict_variable={'id':var_id,'target':target_component_variable(output['component'], output['name']),'modelReference':model_name,'taskReference':task_id}
+        dataGenerator_id = 'dg_'+ var_id
         if 'scale' in output:
             dict_parameter={'id':'scale','value':output['scale']}           
-            dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':id+'*scale','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
+            dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':var_id+'*scale','listOfVariables':[dict_variable],'listOfParameters':[dict_parameter]}
         else:
-            dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':id,'listOfVariables':[dict_variable]}
+            dict_dataGenerator={'id':dataGenerator_id,'name':dataGenerator_id,'math':var_id,'listOfVariables':[dict_variable]}
         dict_sedDocument['listOfDataGenerators'].append(dict_dataGenerator)
-        dataSet_id = 'dataset_'+ id
+        dataSet_id = 'dataset_'+ var_id
         dict_dataSet={'id':dataSet_id,'label':id,'dataReference':dataGenerator_id}
         dict_report['listOfDataSets'].append(dict_dataSet)
 
