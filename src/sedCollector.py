@@ -613,7 +613,11 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
         },
         'adjustableParameters_info':adjustableParameters_info,'experimentReferences':experimentReferences,	
         'lowerBound':lowerBound,'upperBound':upperBound,'initial_value':initial_value}
-
+    
+    Note
+    ----
+    If the experimentalCondition (fitMapping) is an array, then treat it as external variable (input)
+    If the experimentalCondition (fitMapping) is a scalar, then treat it as parameter with initial value equal to the scalar
     """
     fitExperiments={}
     original_models = get_models_referenced_by_task(doc,task)
@@ -701,7 +705,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                         parameter_info = get_variable_info_CellML(sedVars,model_etree)
                         if isinstance (initial_value, np.ndarray):
                             external_variables_info_new.update(parameter_info)
-                            parameters_values.append(initial_value)
+                            parameters_values.append(initial_value) 
                         else:
                             fitExperiments[fitExperiment.getId()]['parameters'].update(parameter_info)
                             fitExperiments[fitExperiment.getId()]['parameters'][sedVars[0].getId()]['value']=initial_value                       
@@ -757,7 +761,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             module=load_module(full_path)
             os.close(tempfile_py)
             # and delete temporary file
-            os.remove(full_path)
+           # os.remove(full_path)
 
         fitExperiments[fitExperiment.getId()]['fitness_info']=(observables_info,observables_weight,observables_exp)
         fitExperiments[fitExperiment.getId()]['sim_setting']=sim_setting

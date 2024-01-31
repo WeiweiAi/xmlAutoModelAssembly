@@ -361,6 +361,9 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
                     step_size = output_step_size # modify step_size to output_step_size update the states at least once
             # integrate to the output start point
             n=abs((output_start_time-voi)/step_size)
+            if n < 1:
+                rates=_update_rates(voi, states,  rates, variables, module, external_variable)
+                voi = output_start_time
             for i in range(int(n)):       
                 rates=_update_rates(voi, states,  rates, variables, module, external_variable)
                 delta = list(map(lambda var: var * step_size, rates))
@@ -381,6 +384,9 @@ def solve_euler(module, current_state, observables, output_start_time, output_en
                 step_size = output_step_size # modify step_size to output_step_size update the states at least once 
         # integrate to the output start point
         n=abs((output_start_time-voi)/step_size)
+        if n < 1:
+            rates=_update_rates(voi, states,  rates, variables, module, external_variable)
+            voi = output_start_time
         for i in range(int(n)):       
             rates=_update_rates(voi, states,  rates, variables, module, external_variable)
             delta = list(map(lambda var: var * step_size, rates))

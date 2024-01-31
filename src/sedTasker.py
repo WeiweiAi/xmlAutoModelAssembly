@@ -12,6 +12,7 @@ import sys
 from scipy.optimize import minimize, Bounds,LinearConstraint,least_squares,shgo,dual_annealing,differential_evolution
 import numpy
 import copy
+import math
 
 
 
@@ -312,8 +313,13 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
             except ValueError as exception:
                 print(exception)
                 raise RuntimeError(exception)
-            current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
-            sed_results = copy.deepcopy(current_state[-1])
+            try:
+                current_state=sim_TimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                sed_results = copy.deepcopy(current_state[-1])
+            except RuntimeError as exception:
+                print(exception)
+                return 1e12
+
         elif simulation_type=='steadyState':
             observable_exp_temp=observables_exp[list(observables_exp.keys())[0]]
             for i in range(len(observable_exp_temp)): # assume all observables and experimental conditions have the same number of data points
@@ -328,12 +334,20 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
                     print(exception)
                     raise RuntimeError(exception)
                 if i==0:
-                    current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
-                    sed_results = copy.deepcopy(current_state[-1])
+                    try:
+                        current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                        sed_results = copy.deepcopy(current_state[-1])
+                    except RuntimeError as exception:
+                        print(exception)
+                        return 1e12
                 else:
-                    current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
-                    for key, value in current_state[-1].items():
-                        sed_results[key]=numpy.append(sed_results[key],value)
+                    try:
+                        current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
+                        for key, value in current_state[-1].items():
+                            sed_results[key]=numpy.append(sed_results[key],value)
+                    except RuntimeError as exception:
+                        print(exception)
+                        return 1e12
         else:
             raise RuntimeError('Simulation type not supported!')
         
@@ -343,5 +357,6 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
             sim_value=calc_data_generator_results(dataGenerator, sed_results)
             residuals[key]=abs(sim_value-exp_value)
             residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
-    
+        if math.isnan(residuals_sum):
+            return 1e12
     return residuals_sum
