@@ -67,20 +67,20 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
         temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
         # cleanup modified model sources
-        os.remove(temp_model_source)
+        # os.remove(temp_model_source)
         if cellml_model:
             model_base_dir=os.path.dirname(temp_model.getSource())
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
             if analyser:
                 mtype=get_mtype(analyser)
-                external_variable=get_externals_varies(mtype,analyser, cellml_model, external_variables_info, external_variables_values)
+                external_variable=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values)
                 # write Python code to a temporary file
                 tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
                 writePythonCode(analyser, full_path)
                 module=load_module(full_path)
                 os.close(tempfile_py)
                 # and delete temporary file
-                os.remove(full_path)
+                # os.remove(full_path)
 
     except (ValueError,FileNotFoundError) as exception:
         print(exception)
