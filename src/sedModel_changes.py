@@ -258,10 +258,10 @@ def resolve_model_and_apply_xml_changes(orig_model, sed_doc, working_dir,
             * :obj:`etree._Element`: element tree for the resolved/modified model
     """
     model = orig_model.clone()
-
+    model_etree=None
     # resolve model
     temp_model_source = resolve_model(model, sed_doc, working_dir)
-
+    
     # apply changes to model
     if apply_xml_model_changes and model.isSetLanguage() and is_model_language_encoded_in_xml(model.getLanguage ()):
         # read model from file
@@ -274,21 +274,19 @@ def resolve_model_and_apply_xml_changes(orig_model, sed_doc, working_dir,
             # apply changes
             apply_changes_to_xml_model(model, model_etree, sed_doc, working_dir)
             model.getListOfChanges ().clear()
-
-            # write model to file
-            if save_to_file:
-                if temp_model_source is None:
-                    modified_model_file, temp_model_source = tempfile.mkstemp(suffix='.xml', dir=os.path.dirname(model.getSource()))
-                    os.close(modified_model_file)
-                    model.setSource(temp_model_source)
-
-                model_etree.write(model.getSource(),
-                                  xml_declaration=True,
-                                  encoding="utf-8",
-                                  standalone=False,
-                                  )
-    else:
-        model_etree = None
+    # write model to file
+    if save_to_file:
+        if temp_model_source is None:
+            modified_model_file, temp_model_source = tempfile.mkstemp(suffix='.xml',prefix=model.getId()+"_", dir=os.path.dirname(model.getSource()))
+            os.close(modified_model_file)
+            model.setSource(temp_model_source)
+        
+        model_etree.write(model.getSource(),
+                          xml_declaration=True,
+                          encoding="utf-8",
+                          standalone=False,
+                          )
+        
 
     return model, model.getSource(), model_etree
 
