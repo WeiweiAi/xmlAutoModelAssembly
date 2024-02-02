@@ -625,6 +625,8 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
     try:
         temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
+        # cleanup modified model sources
+        os.remove(temp_model_source)
         if not cellml_model:
             raise RuntimeError('Model parsing failed!')
         adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
@@ -655,6 +657,8 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
         try:
             temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
             cellml_model,parse_issues=parse_model(temp_model_source, True)
+            # cleanup modified model sources
+            os.remove(temp_model_source)
             if not cellml_model:
                 raise RuntimeError('Model parsing failed!')
         except ValueError as exception:
@@ -756,6 +760,10 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
         if analyser:
             mtype=get_mtype(analyser)
             # write Python code to a temporary file
+            # make a directory in the model_base_dir for the temporary file if it does not exist
+            temp_folder = model_base_dir+os.sep+ temp_model.getId()+'_temp'
+            if not os.path.exists(temp_folder):
+                os.makedirs(temp_folder)
             tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
             writePythonCode(analyser, full_path)
             module=load_module(full_path)

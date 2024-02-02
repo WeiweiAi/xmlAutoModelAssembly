@@ -67,7 +67,7 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
         temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
         # cleanup modified model sources
-        # os.remove(temp_model_source)
+        os.remove(temp_model_source)
         if cellml_model:
             model_base_dir=os.path.dirname(temp_model.getSource())
             analyser, issues =analyse_model_full(cellml_model,model_base_dir,external_variables_info)
@@ -75,7 +75,11 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
                 mtype=get_mtype(analyser)
                 external_variable=get_externals_varies(analyser, cellml_model, external_variables_info, external_variables_values)
                 # write Python code to a temporary file
-                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
+                # make a directory in the model_base_dir for the temporary file if it does not exist
+                temp_folder = model_base_dir+os.sep+ temp_model.getId()+'_temp'
+                if not os.path.exists(temp_folder):
+                    os.makedirs(temp_folder)
+                tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=temp_folder)
                 writePythonCode(analyser, full_path)
                 module=load_module(full_path)
                 os.close(tempfile_py)
@@ -245,8 +249,8 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     if method=='global optimization algorithm':
         results = dict()
         results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
-        results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
-        results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+       # results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+       # results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
         # print the best result
         best_result = None
         for key, result in results.items():
@@ -257,7 +261,7 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         return best_result
     else:
         res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time), 
-                 bounds=bounds, ftol=1e-15,gtol=None,xtol=None,max_nfev=1000*len(initial_value))
+                 bounds=bounds, ftol=1e-8, gtol=None, xtol=None, max_nfev=10000,)
         print(res)
     return res
 
