@@ -6,6 +6,9 @@ SCIPY_OPTIMIZE_LOCAL = ['Nelder-Mead','Powell','CG','BFGS','Newton-CG','L-BFGS-B
 KISAO_ALGORITHMS = {'KISAO:0000514': 'Nelder-Mead',
                     'KISAO:0000472': 'global optimization algorithm',
                     'KISAO:0000471': 'local optimization algorithm',
+                    'KISAO:0000503': 'simulated annealing',	
+                    'KISAO:0000520': 'evolutionary algorithm',
+                    'KISAO:0000504': 'random search',
                     }
 def get_KISAO_parameters_opt(algorithm):
     """Get the parameters of the KISAO algorithm.

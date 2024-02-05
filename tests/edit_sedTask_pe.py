@@ -25,7 +25,9 @@ dict_algorithmParameter_opt2={'kisaoID':'KISAO:0000486','name':'maxiter','value'
 dict_algorithm_opt={'kisaoID':'KISAO:0000514','name':'Nelder-Mead', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 dict_algorithm_opt={'kisaoID':'KISAO:0000472','name':'global optimization algorithm', 'listOfAlgorithmParameters':[]}
 #dict_algorithm_opt={'kisaoID':'KISAO:0000471','name':'local optimization algorithm', 'listOfAlgorithmParameters':[]}
-#dict_algorithm_opt={'kisaoID':'KISAO:0000471','name':'local optimization algorithm', 'listOfAlgorithmParameters':[]}
+#dict_algorithm_opt={'kisaoID':'KISAO:0000503','name':'simulated annealing', 'listOfAlgorithmParameters':[]}
+#dict_algorithm_opt={'kisaoID':'KISAO:0000520','name':'evolutionary algorithm', 'listOfAlgorithmParameters':[]}
+#dict_algorithm_opt={'kisaoID':'KISAO:0000504','name':'random search', 'listOfAlgorithmParameters':[]}
 
 # This is to set simulation algorithm
 dict_algorithm_sim_parameter={'kisaoID':'KISAO:0000467','name':'max_step','value':'0.001'}

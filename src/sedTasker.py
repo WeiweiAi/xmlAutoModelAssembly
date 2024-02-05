@@ -9,7 +9,7 @@ from .sedReporter import exec_report
 import tempfile
 import os
 import sys
-from scipy.optimize import Bounds,least_squares,shgo,dual_annealing,differential_evolution
+from scipy.optimize import Bounds,least_squares,shgo,dual_annealing,differential_evolution,basinhopping
 import numpy
 import copy
 import math
@@ -199,7 +199,7 @@ def report_task(doc,task, variable_results, base_out_path, rel_out_path, report_
 
     return report_results
 
-def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info={},external_variables_values=[],ss_time={}):
+def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info={},external_variables_values=[],ss_time={},cost_type=None):
     """
     Execute a SedTask of type ParameterEstimationTask.
     The model is assumed to be in CellML format.
@@ -248,9 +248,9 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     initial_value=adjustables[2]
     if method=='global optimization algorithm':
         results = dict()
-        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
-       # results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
-       # results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time))
+        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+       # results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+       # results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
         # print the best result
         best_result = None
         for key, result in results.items():
@@ -259,13 +259,24 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
                 best_result = result
         print(best_result)
         return best_result
-    else:
-        res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time), 
+    elif method=='simulated annealing':
+        res=dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+        print(res)
+    elif method=='evolutionary algorithm':
+        res=differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+        print(res)
+    elif method=='random search':
+        res=basinhopping(objective_function, initial_value,minimizer_kwargs={'args':(external_variables_values, fitExperiments, doc, ss_time,cost_type)})
+        print(res)
+    elif method=='local optimization algorithm':
+        res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time,cost_type), 
                  bounds=bounds, ftol=1e-8, gtol=None, xtol=None, max_nfev=10000,)
         print(res)
+    else:
+        raise RuntimeError('Optimisation method not supported!')
     return res
 
-def objective_function(param_vals, external_variables_values, fitExperiments, doc, ss_time):
+def objective_function(param_vals, external_variables_values, fitExperiments, doc, ss_time,cost_type=None):
     """ Objective function for parameter estimation task.
     The model is assumed to be in CellML format.
 
@@ -365,8 +376,22 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
         for key, exp_value in observables_exp.items():
             dataGenerator=doc.getDataGenerator(key)
             sim_value=calc_data_generator_results(dataGenerator, sed_results)
-            residuals[key]=abs(sim_value-exp_value)
-            residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+            if cost_type=='AE':
+                residuals[key]=abs(sim_value-exp_value)
+                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+            elif cost_type=='MIN-MAX':
+                residuals[key]=abs(sim_value-exp_value)/(max(exp_value)-min(exp_value))
+                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+            elif cost_type=='Z-SCORE':
+                residuals[key]=abs(sim_value-exp_value)/numpy.std(exp_value)
+                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
+            elif cost_type is None:
+                # MSE is the default cost function
+                residuals[key]=(sim_value-exp_value)**2
+                residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])/len(exp_value)              
+            else:
+                raise RuntimeError('Cost type not supported!')
+                
         if math.isnan(residuals_sum):
             return 1e12
     return residuals_sum
