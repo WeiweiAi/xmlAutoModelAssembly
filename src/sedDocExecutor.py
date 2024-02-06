@@ -1,6 +1,6 @@
 from .sedTasker import exec_task, report_task, exec_parameterEstimationTask
 
-def exec_sed_doc(doc, working_dir,base_out_path, rel_out_path=None, external_variables_info={}, external_variables_values=[],ss_time={}):
+def exec_sed_doc(doc, working_dir,base_out_path, rel_out_path=None, external_variables_info={}, external_variables_values=[],ss_time={},cost_type=None):
     """
     Execute a SED document.
 
@@ -59,7 +59,7 @@ def exec_sed_doc(doc, working_dir,base_out_path, rel_out_path=None, external_var
             raise RuntimeError('RepeatedTask not supported yet')
         elif task.isSedParameterEstimationTask ():
             try:
-                res=exec_parameterEstimationTask(doc,task, working_dir,external_variables_info,external_variables_values,ss_time)
+                res=exec_parameterEstimationTask(doc,task, working_dir,external_variables_info,external_variables_values,ss_time,cost_type)
 
             except Exception as exception:
                 print(exception)

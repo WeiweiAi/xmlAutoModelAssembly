@@ -221,6 +221,8 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         The values of the external variables to be specified [value1, value2, ...]
     ss_time: dict, optional
         The time point for steady state simulation, in the format of {fitid:time}
+    cost_type: str, optional
+        The cost function to be used for the optimisation. Default: None
 
     Raises
     ------
