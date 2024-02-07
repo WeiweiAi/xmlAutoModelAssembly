@@ -82,6 +82,8 @@ def get_value_of_variable_model_xml_targets(variable, model_etrees):
         variable (:obj:`Variable`): variable
         model_etrees (:obj:`dict` of :obj:`str` to :obj:`etree._Element`): dictionary that maps the
             ids of models to paths to files which contain their XML definitions
+    Raise:
+        NotImplementedError, ValueError
 
     Returns:
         :obj:`float`: value
@@ -131,9 +133,15 @@ def get_variable_info_CellML(task_variables,model_etree):
     for v in task_variables:
         if v.getTarget().rpartition('/@')[-1]=='initial_value': # target initial value instead of variable
             vtemp=v.getTarget().rpartition('/@')
-            variable_element = model_etree.xpath(vtemp[0],namespaces=CELLML2NAMESPACE)[0]
+            try:
+                variable_element = model_etree.xpath(vtemp[0],namespaces=CELLML2NAMESPACE)[0]
+            except:
+                raise ValueError('The variable {} is not found!'.format(v.getTarget ()))
         else:
-            variable_element = model_etree.xpath(v.getTarget (),namespaces=CELLML2NAMESPACE)[0]
+            try:
+                variable_element = model_etree.xpath(v.getTarget (),namespaces=CELLML2NAMESPACE)[0]
+            except:
+                raise ValueError('The variable {} is not found!'.format(v.getTarget ()))
         if variable_element is False:
             raise ValueError('The variable {} is not found!'.format(v.getTarget ()))
         else:
@@ -161,6 +169,10 @@ def resolve_model(model, sed_doc, working_dir):
 
         sed_doc (:obj:`SedDocument`): parent SED document; used to resolve sources defined by reference to other models
         working_dir (:obj:`str`): working directory of the SED document (path relative to which models are located)
+    
+    Raise:
+        ValueError, NotImplementedError, FileNotFoundError
+
 
     Returns:
         :obj:`str` or None: temporary path to the source of the modified model, if the model needed to be resolved from
@@ -248,7 +260,10 @@ def resolve_model_and_apply_xml_changes(orig_model, sed_doc, working_dir,
         apply_xml_model_changes (:obj:`bool`, optional): if :obj:`True`, apply any model changes specified in the SED-ML file before
             calling :obj:`task_executer`.
         save_to_file (:obj:`bool`): whether to save the resolved/modified model to a file       
-
+   
+    Raise:
+        ValueError    
+        
     Returns:
         :obj:`tuple`:
 
@@ -260,7 +275,10 @@ def resolve_model_and_apply_xml_changes(orig_model, sed_doc, working_dir,
     model = orig_model.clone()
     model_etree=None
     # resolve model
-    temp_model_source = resolve_model(model, sed_doc, working_dir)
+    try:
+        temp_model_source = resolve_model(model, sed_doc, working_dir)
+    except Exception as exception:
+        raise ValueError('The model could not be resolved: {}'.format(str(exception)))
     
     # apply changes to model
     if apply_xml_model_changes and model.isSetLanguage() and is_model_language_encoded_in_xml(model.getLanguage ()):
@@ -272,7 +290,10 @@ def resolve_model_and_apply_xml_changes(orig_model, sed_doc, working_dir,
 
         if model.getListOfChanges () :
             # apply changes
-            apply_changes_to_xml_model(model, model_etree, sed_doc, working_dir)
+            try:
+                apply_changes_to_xml_model(model, model_etree, sed_doc, working_dir)
+            except Exception as exception:
+                raise ValueError('The model could not be modified: {}'.format(str(exception)))
             model.getListOfChanges ().clear()
     # write model to file
     if save_to_file:
@@ -310,7 +331,10 @@ def apply_changes_to_xml_model(model, model_etree,sed_doc=None, working_dir=None
             set value compute model change
         validate_unique_xml_targets (:obj:`bool`, optional): whether to validate the XML targets match
             uniue objects
-
+    
+    Raise:
+        NotImplementedError, ValueError
+            
     """
 
     # First pass:  Must-be-XML changes:
@@ -393,7 +417,8 @@ def get_values_of_variable_model_xml_targets_of_model_change(change, sed_doc, mo
         model_etrees (:obj:`dict` of :obj:`str` to :obj:`etree._Element`): map from the ids of models to element
             trees of their sources
         working_dir (:obj:`str`): working directory of the SED document (path relative to which models are located)
-
+    Raise:
+        ValueError
     Returns:
         :obj:`dict`: dictionary which contains the value of each variable of each
             compute model change
@@ -402,16 +427,21 @@ def get_values_of_variable_model_xml_targets_of_model_change(change, sed_doc, mo
     for variable in change.getListOfVariables():
         variable_model = variable.model
         if variable_model.getId() not in model_etrees:
-            copy_variable_model, temp_model_source, variable_model_etree= resolve_model_and_apply_xml_changes(
-                variable_model, sed_doc, working_dir,
-                apply_xml_model_changes=True,
-                save_to_file=False)
-            model_etrees[variable_model.getId()] = variable_model_etree
+            try:
+                copy_variable_model, temp_model_source, variable_model_etree= resolve_model_and_apply_xml_changes(
+                    variable_model, sed_doc, working_dir,
+                    apply_xml_model_changes=True,
+                    save_to_file=False)
+                model_etrees[variable_model.getId()] = variable_model_etree
+            except Exception as exception:
+                raise ValueError('The model could not be resolved: {}'.format(str(exception)))
 
             if temp_model_source:
                 os.remove(temp_model_source)
-
-        variable_values[variable.getId()] = get_value_of_variable_model_xml_targets(variable, model_etrees)
+        try:
+            variable_values[variable.getId()] = get_value_of_variable_model_xml_targets(variable, model_etrees)
+        except Exception as exception:
+            raise ValueError('The value of variable {} could not be obtained: {}'.format(variable.getId(), str(exception)))
 
     return variable_values
 
@@ -424,7 +454,8 @@ def calc_compute_model_change_new_value(setValue, variable_values=None, range_va
             compute model change
         range_values (:obj:`dict`, optional): dictionary which contains the value of each range of each
             set value compute model change
-
+    Raise:
+        ValueError
     Returns:
         :obj:`float`: new value
     """
@@ -453,7 +484,8 @@ def calc_data_generator_results(data_generator, variable_results):
     Args:
         data_generator (:obj:`DataGenerator`): data generator
         variable_results (:obj:`VariableResults`): results for the variables of the data generator
-
+    Raise:
+        NotImplementedError
     Returns:
         :obj:`numpy.ndarray`: result of data generator
     """

@@ -1,4 +1,5 @@
 from libcellml import Generator, GeneratorProfile, Printer
+from .analyser import parse_model,analyse_model_full
 """
 =================
 Code generation
@@ -57,3 +58,38 @@ def writePythonCode(analyser, full_path):
     implementation_code_python = generator.implementationCode()                   
     with open(full_path, "w") as f:
         f.write(implementation_code_python)
+
+def toCellML2(oldPath, newPath, external_variables_info={},strict_mode=True, py_full_path=None):
+    """ 
+    Convert a CellML 1.X model to CellML 2.0.
+
+    Parameters
+    ----------
+    oldPath: str
+        The full path of the CellML 1.X file (including the file name and extension).
+    newPath: str
+        The full path of the CellML 2.0 file (including the file name and extension).
+    external_variables_info: dict
+        A dictionary of external variables information.
+    strict_mode: bool
+        If True, the model is checked against the CellML 2.0 specification.
+    py_full_path: str
+        The full path of the python file (including the file name and extension).    
+
+    Side effect
+    -----------
+    The new CellML 2.0 model is written to the specified file.
+    If the model is valid, the python code is written to the specified file.
+    """
+    try:
+        model_parse, issues=parse_model(oldPath, False)
+    except Exception as e:
+        print(e)
+        return   
+    print(issues)
+    writeCellML(model_parse,newPath)
+    analyser,issues=analyse_model_full(model_parse,newPath,external_variables_info,strict_mode)
+    print(issues)
+    if py_full_path is not None:
+        writePythonCode(analyser, py_full_path)
+    

@@ -2317,11 +2317,6 @@ def create_sedDocment(dict_sedDocument):
         The dictionary format:
         {'listOfDataDescriptions':[dict_dataDescription],'listOfModels':[dict_model],'listOfSimulations':[dict_simulation],
         'listOfTasks':[dict_task],'listOfDataGenerators':[dict_dataGenerator],'listOfReports':[dict_report]}
-    
-    Raises
-    ------
-    ValueError
-        If any operation returns an error.
 
     Returns
     -------
@@ -2351,7 +2346,8 @@ def create_sedDocment(dict_sedDocument):
             for dict_report in dict_sedDocument['listOfReports']:
                 create_sedReport(doc,dict_report)
     except ValueError as e:
-        raise
+        print(e)
+        return
     return doc
    
 def get_dict_sedDocument(doc):
@@ -2363,16 +2359,6 @@ def get_dict_sedDocument(doc):
     doc: SedDocument
         An instance of SedDocument.
     
-    Raises
-    ------
-    ValueError
-        If get_dict_dataDescription(dataDescription) failed.
-        If get_dict_model(sedModel) failed.
-        If get_dict_simulation(sedSimulation) failed.
-        If get_dict_abstractTask(task) failed.
-        If get_dict_dataGenerator(dataGenerator) failed.
-        If get_dict_report(sedReport) failed.
-
     Notes
     -----
     Assume the SED-ML document has been created successfully.
@@ -2408,7 +2394,8 @@ def get_dict_sedDocument(doc):
             if output.isSedReport():
                 dict_sedDocument['listOfReports'].append(get_dict_report(output))
     except ValueError as e:
-        raise
+        print(e)
+        return
     return dict_sedDocument
 
 # Test

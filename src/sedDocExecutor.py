@@ -53,7 +53,7 @@ def exec_sed_doc(doc, working_dir,base_out_path, rel_out_path=None, external_var
                 report_result = report_task(doc,task, variable_results, base_out_path, rel_out_path, report_formats =['csv'])
             except Exception as exception:
                 print(exception)
-                raise RuntimeError(exception)           
+                return           
 
         elif task.isSedRepeatedTask ():
             raise RuntimeError('RepeatedTask not supported yet')
@@ -63,7 +63,7 @@ def exec_sed_doc(doc, working_dir,base_out_path, rel_out_path=None, external_var
 
             except Exception as exception:
                 print(exception)
-                raise RuntimeError(exception)
+                return
 
                 
             

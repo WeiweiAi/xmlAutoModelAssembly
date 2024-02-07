@@ -78,7 +78,7 @@ def parse_model(filename, strict_mode=False):
     tuple
         (Model, str)
         The CellML model and the issues found by the parser.
-        If issues are found, the model is None.
+        If issues are found, the model could be None.
     """
 
     if not os.path.isfile(filename):

@@ -192,6 +192,15 @@ def get_models_referenced_by_range(task,range):
     return models
 
 def get_models_referenced_by_setValue(task,setValue):
+    """ Get the models referenced by a setValue
+
+    Args:
+        task (:obj:`SedRepeatedTask `): SedRepeatedTask 
+        setValue (:obj:`SedSetValue`): setValue
+
+    Returns:
+        :obj:`set` of :obj:`SedModel`: models
+    """
     
     models = set()
     models.add(setValue.getModelReference ())
@@ -203,12 +212,31 @@ def get_models_referenced_by_setValue(task,setValue):
     return models
 
 def get_models_referenced_by_computedChange(change):
+    """
+    Get the models referenced by a computedChange
+
+    Args:
+        change (:obj:`SedComputedChange`): computedChange
+        
+    Returns:
+        :obj:`set` of :obj:`SedModel`: models
+    """
     models = set()  
     if change.getListOfVariables ():
         models.update(get_models_referenced_by_listOfVariables(change.getListOfVariables))
     return models
 
 def get_models_referenced_by_listOfVariables(listOfVariables):
+    """
+    Get the models referenced by a list of sedVariables
+
+    Args:
+        listOfVariables (:obj:`list` of obj: ` sedVariables` )
+    
+    Returns:
+        :obj:`set` of :obj:`SedModel`: models
+    
+    """
     models = set()
     for variable in listOfVariables:
         if variable.isSetModelReference ():
@@ -292,6 +320,9 @@ def get_value_of_dataSource(doc, dataSourceID,dfDict):
     Raises
     ------
     ValueError
+        If the data source is not defined
+        If the data source isSetIndexSet ()
+        If the slice number is bigger than 2
 
     Returns
     -------
@@ -393,6 +424,7 @@ def get_adjustableParameters(model_etree,task):
     Raises
     ------
     ValueError
+        If the variable is not found in the model
 
     Returns
     -------
@@ -414,6 +446,7 @@ def get_adjustableParameters(model_etree,task):
         try:
             variables_info = get_variable_info_CellML([adjustableParameter],model_etree)
         except ValueError as exception:
+            print('Error in get_variable_info_CellML:',exception)
             raise exception
         for key,variable_info in variables_info.items(): # should be only one variable
             adjustableParameters_info[i]={'component':variable_info['component'],'name': variable_info['name']}
@@ -501,6 +534,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                 try:
                     tspan=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 # should be 1D array
                 if tspan.ndim>1:
@@ -512,6 +546,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                 try:
                     initial_value_=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 if initial_value_.ndim>1:
                     raise ValueError('The experimental condition {} is not 1D array!'.format(fitMapping.getDataSource()))
@@ -529,6 +564,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                         parameter_info = get_variable_info_CellML(sedVars,model_etree)
                         parameter=get_observables(analyser, cellml_model, parameter_info)
                     except ValueError as exception:
+                        print('Error in get_variable_info_CellML or get_observables:',exception)
                         raise exception                    
                     fitExperiments[fitExperiment.getId()]['parameters'].update(parameter)
                     for sedVar in sedVars:
@@ -538,6 +574,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                 try:
                     observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 if observable_exp.ndim>1:
                     raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))
@@ -549,6 +586,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     observable_info = get_variable_info_CellML(sedVars,model_etree)
                     observable=get_observables(analyser, cellml_model, observable_info)
                 except ValueError as exception:
+                    print('Error in get_variable_info_CellML or get_observables:',exception)
                     raise exception                                   
                 observables_info.update(observable)
                 key=dataGenerator.getId()
@@ -560,6 +598,7 @@ def get_fit_experiments(doc,task,analyser, cellml_model,model_etree,dfDict):
                     try:
                         pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
                     except ValueError as exception:
+                        print('Error in get_value_of_dataSource:',exception)
                         raise exception
                     if pointWeight.ndim>1:
                         raise ValueError('The point weight {} is not 1D array!'.format(fitMapping.getPointWeight()))
@@ -601,6 +640,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
     Raises
     ------
     ValueError
+    RuntimeError
 
     Returns
     -------
@@ -632,6 +672,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
         adjustableParameters_info,experimentReferences,lowerBound,upperBound,initial_value=get_adjustableParameters(model_etree,task)
         adjustables=(lowerBound,upperBound,initial_value)
     except ValueError as exception:
+        print('Error in resolve_model_and_apply_xml_changes or parse_model:',exception)
         raise exception
     for fitExperiment in task.getListOfFitExperiments():
         external_variables_info_new=copy.deepcopy(external_variables_info)
@@ -649,6 +690,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             dict_algorithm=get_dict_algorithm(sed_algorithm)
             sim_setting.method, sim_setting.integrator_parameters=get_KISAO_parameters(dict_algorithm)
         except ValueError as exception:
+            print('Error in get_dict_algorithm or get_KISAO_parameters:',exception)
             raise exception
         if fitExperiment.isSetName (): # temporary solution in case that a variant model is used for this fit experiment
             modelReference=fitExperiment.getName ()
@@ -662,6 +704,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             if not cellml_model:
                 raise RuntimeError('Model parsing failed!')
         except ValueError as exception:
+            print('Error in resolve_model_and_apply_xml_changes or parse_model:',exception)
             raise exception   
         sub_adjustableParameters_info={}
         adj_param_indices=[]
@@ -681,6 +724,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                 try:
                     tspan=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 # should be 1D array
                 if tspan.ndim>1:
@@ -692,6 +736,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                 try:
                     initial_value_=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 if initial_value_.ndim>1:
                     raise ValueError('The experimental condition {} is not 1D array!'.format(fitMapping.getDataSource()))
@@ -714,11 +759,13 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                             fitExperiments[fitExperiment.getId()]['parameters'].update(parameter_info)
                             fitExperiments[fitExperiment.getId()]['parameters'][sedVars[0].getId()]['value']=initial_value                       
                     except ValueError as exception:
+                        print('Error in get_variable_info_CellML:',exception)
                         raise exception                          
             elif fitMapping.getTypeAsString ()=='observable':
                 try:
                     observable_exp=get_value_of_dataSource(doc, fitMapping.getDataSource(),dfDict)
                 except ValueError as exception:
+                    print('Error in get_value_of_dataSource:',exception)
                     raise exception
                 if observable_exp.ndim>1:
                     raise ValueError('The observable {} is not 1D array!'.format(fitMapping.getDataSource()))             
@@ -727,6 +774,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                 try:
                     observable_info = get_variable_info_CellML(sedVars,model_etree)
                 except ValueError as exception:
+                    print('Error in get_variable_info_CellML:',exception)
                     raise exception                                   
                 observables_info.update(observable_info)
                 key=dataGenerator.getId()                                                
@@ -737,6 +785,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
                     try:
                         pointWeight=get_value_of_dataSource(doc, fitMapping.getPointWeight(),dfDict)
                     except ValueError as exception:
+                        print('Error in get_value_of_dataSource:',exception)
                         raise exception
                     if pointWeight.ndim>1:
                         raise ValueError('The point weight {} is not 1D array!'.format(fitMapping.getPointWeight()))
@@ -764,7 +813,7 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
             temp_folder = model_base_dir+os.sep+ temp_model.getId()+'_temp'
             if not os.path.exists(temp_folder):
                 os.makedirs(temp_folder)
-            tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=model_base_dir)
+            tempfile_py, full_path = tempfile.mkstemp(suffix='.py', prefix=temp_model.getId()+"_", text=True,dir=temp_folder)
             writePythonCode(analyser, full_path)
             module=load_module(full_path)
             os.close(tempfile_py)

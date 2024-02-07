@@ -113,6 +113,7 @@ def validate_sedml(file_name):
     try:
         doc = read_sedml(file_name)
     except FileNotFoundError as e:
+        print(e)
         raise e
     num_errors = doc.getNumErrors(libsedml.LIBSEDML_SEV_ERROR)
     num_warnings = doc.getNumErrors(libsedml.LIBSEDML_SEV_WARNING)
@@ -127,6 +128,7 @@ def validate_sedml(file_name):
     try:
         dict_doc = get_dict_sedDocument(doc)
     except ValueError as e:
+        print(e)
         raise e
 
     if dict_doc and num_errors == 0:

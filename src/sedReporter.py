@@ -4,6 +4,22 @@ import pandas
 from .sedModel_changes import calc_data_generator_results
 
 def writeReport(report, results, base_path, rel_path, format='csv'):
+    """ Write the results of a report to a file
+
+    Args:
+        report (:obj:`SedReport`): report
+        results (:obj:`dict`): results of the data sets, format is {data_set.id: numpy.ndarray}
+        base_path (:obj:`str`): path to store the outputs
+
+            * CSV: directory in which to save outputs to files
+              ``{base_path}/{rel_path}/{report.getId()}.csv``
+
+        rel_path (:obj:`str`, optional): path relative to :obj:`base_path` to store the outputs
+        format (:obj:`ReportFormat`, optional): report format (e.g., csv)
+    Raises:
+        :obj:`NotImplementedError`: if the report format is not supported
+
+    """
     rel_path = os.path.relpath(rel_path, '.')
     results_array = []
     data_set_ids = []
@@ -224,7 +240,13 @@ def exec_report(report, variable_results, base_out_path, rel_out_path, formats, 
             succeeded = False
 
     for format in formats:
-        writeReport(report, data_set_results, base_out_path, os.path.join(rel_out_path, report.getId()) if rel_out_path else report.getId(), format)
+        try:
+            writeReport(report, data_set_results, base_out_path, os.path.join(rel_out_path, report.getId()) if rel_out_path else report.getId(), format)
+        except Exception as exception:
+            failed = True
+            failed_msg = 'Failed to write report to {} format: {}'.format(format, str(exception))
+            if failed_msg not in str(exception):
+                exception = ValueError(failed_msg + '\n' + str(exception))
 
     if failed:
         status = 'FAILED'

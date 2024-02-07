@@ -251,8 +251,6 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     if method=='global optimization algorithm':
         results = dict()
         results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
-       # results['DA'] = dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
-       # results['DE'] = differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
         # print the best result
         best_result = None
         for key, result in results.items():
@@ -268,7 +266,7 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         res=differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
         print(res)
     elif method=='random search':
-        res=basinhopping(objective_function, initial_value,minimizer_kwargs={'args':(external_variables_values, fitExperiments, doc, ss_time,cost_type)})
+        res=basinhopping(objective_function, initial_value,minimizer_kwargs={'args':(external_variables_values, fitExperiments, doc, ss_time,cost_type)}) # cannot use bounds
         print(res)
     elif method=='local optimization algorithm':
         res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time,cost_type), 
