@@ -8,9 +8,10 @@ fastobo==0.12.2
 fonttools==4.45.0
 idna==3.4
 importlib-resources==6.1.1
+isodate==0.6.1
 kisao==2.33
 kiwisolver==1.4.5
-libcellml @ file:///C:/Users/wai484/Downloads/libcellml-0.5.0rc5-cp39-cp39-win_amd64.whl#sha256=74770f47af22985972c7e1b4e39ddaa8c03ccd5430b401aad6297c7aa9eb34af
+libcellml==0.5.0
 lxml==4.9.3
 matplotlib==3.8.2
 mpmath==1.3.0
@@ -25,6 +26,7 @@ python-dateutil==2.8.2
 python-libsbml==5.20.1
 python-libsedml==2.0.32
 pytz==2023.3.post1
+rdflib==7.0.0
 requests==2.31.0
 scipy==1.11.3
 six==1.16.0
