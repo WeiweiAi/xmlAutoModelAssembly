@@ -1,0 +1,140 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<model name="BG1" xmlns="http://www.cellml.org/cellml/1.1#" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
+    <!-- Bond graph model of electrical circuit -->
+    <units name="J_per_C">
+        <unit units="joule"/>
+        <unit exponent="-1" units="coulomb"/>
+    </units>
+    <units name="C_per_s">
+        <unit units="coulomb"/>
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="C_per_s2">
+        <unit units="coulomb"/>
+        <unit exponent="-2" units="second"/>
+    </units>
+    <units name="C2_per_J">
+        <unit exponent="2" units="coulomb"/>
+        <unit exponent="-1" units="joule"/>
+    </units>
+    <units name="Js_per_C2">
+        <unit units="joule"/>
+        <unit units="second"/>
+        <unit exponent="-2" units="coulomb"/>
+    </units>
+    <units name="Js2_per_C2">
+        <unit units="joule"/>
+        <unit exponent="2" units="second"/>
+        <unit exponent="-2" units="coulomb"/>
+    </units>
+    <component name="main">
+        <variable initial_value="0" name="t" units="second"/>
+        <!-- State variables-->
+        <variable initial_value="1" name="q_C" units="coulomb"/>
+        <!-- charge on capacitor-->
+        <variable name="v_C" units="C_per_s"/>
+        <!-- current through capacitor-->
+        <variable name="v_R" units="C_per_s"/>
+        <!-- current through resistor-->
+        <variable initial_value="0" name="v_L" units="C_per_s"/>
+        <!-- current through inductor-->
+        <variable name="a_L" units="C_per_s2"/>
+        <!-- rate of change of current through inductor-->
+        <variable name="u_C" units="J_per_C"/>
+        <!-- potential on capacitor-->
+        <variable name="u_R" units="J_per_C"/>
+        <!-- potential across resistor-->
+        <variable name="u_L" units="J_per_C"/>
+        <!-- potential across inductor-->
+        <!-- Constitutive parameters-->
+        <variable initial_value="20" name="C" units="C2_per_J"/>
+        <!-- capacitance-->
+        <variable initial_value="2" name="R" units="Js_per_C2"/>
+        <!-- resistance-->
+        <variable initial_value="10" name="L" units="Js2_per_C2"/>
+        <!-- inductance-->
+        <!-- Conservation laws-->
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>t</ci>
+                    </bvar>
+                    <ci>q_C</ci>
+                </apply>
+                <ci>v_C</ci>
+            </apply>
+            <!-- eqn 3.1.5-->
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>t</ci>
+                    </bvar>
+                    <ci>v_L</ci>
+                </apply>
+                <ci>a_L</ci>
+            </apply>
+            <!-- eqn 3.1.7-->
+            <apply>
+                <eq/>
+                <ci>v_C</ci>
+                <apply>
+                    <minus/>
+                    <ci>v_R</ci>
+                </apply>
+            </apply>
+            <!-- eqn 3.1.1-->
+            <apply>
+                <eq/>
+                <ci>v_R</ci>
+                <ci>v_L</ci>
+            </apply>
+            <!-- eqn 3.1.2-->
+            <apply>
+                <eq/>
+                <ci>u_C</ci>
+                <apply>
+                    <plus/>
+                    <ci>u_R</ci>
+                    <ci>u_L</ci>
+                </apply>
+            </apply>
+            <!-- eqn 3.1.3-->
+            <!-- Constitutive relations-->
+            <apply>
+                <eq/>
+                <ci>u_C</ci>
+                <apply>
+                    <divide/>
+                    <ci>q_C</ci>
+                    <ci>C</ci>
+                </apply>
+            </apply>
+            <!-- eqn 3.1.4-->
+            <apply>
+                <eq/>
+                <ci>u_R</ci>
+                <apply>
+                    <times/>
+                    <ci>v_R</ci>
+                    <ci>R</ci>
+                </apply>
+            </apply>
+            <!-- eqn 3.1.8-->
+            <apply>
+                <eq/>
+                <ci>u_L</ci>
+                <apply>
+                    <times/>
+                    <ci>a_L</ci>
+                    <ci>L</ci>
+                </apply>
+            </apply>
+        </math>
+        <!-- eqn 3.1.6-->
+    </component>
+</model>
