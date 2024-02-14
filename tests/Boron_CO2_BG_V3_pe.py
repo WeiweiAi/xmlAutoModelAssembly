@@ -49,35 +49,35 @@ model_names=[model_id]
 model_sources=[model_name+'.cellml']
 # This is to set optimization algorithm
 # This is to set the tolerance for least square when using local optimization algorithm, default is 1e-8
-dict_algorithmParameter_opt={'kisaoID':'KISAO:0000597','name':'tol','value':'1e-9'} 
+dict_algorithmParameter_opt={'kisaoID':'KISAO:0000597','name':'tol','value':'1e-8'} 
 # This is to set the maximum number of iterations when using local optimization algorithm, default is 1000
-dict_algorithmParameter_opt2={'kisaoID':'KISAO:0000486','name':'maxiter','value':'1e4'} 
+dict_algorithmParameter_opt2={'kisaoID':'KISAO:0000486','name':'maxiter','value':'1000'} 
 
 # ****************** You can choose one of the following optimization algorithms ******************
 # This is to set optimization algorithm as local optimization algorithm, and the scipy.least_square is implemented in the code
 dict_algorithm_opt={'kisaoID':'KISAO:0000471','name':'local optimization algorithm', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 
 # This is to set optimization algorithm as global optimization algorithm, and scipy.shgo is used to implement the algorithm
-# dict_algorithm_opt={'kisaoID':'KISAO:0000472','name':'global optimization algorithm', 'listOfAlgorithmParameters':[]}
+# dict_algorithm_opt={'kisaoID':'KISAO:0000472','name':'global optimization algorithm', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 
 # This is to set optimization algorithm as genetic algorithm, and scipy.differential_evolution is used to implement the algorithm
-# dict_algorithm_opt={'kisaoID':'KISAO:0000520','name':'evolutionary algorithm', 'listOfAlgorithmParameters':[]}
+# dict_algorithm_opt={'kisaoID':'KISAO:0000520','name':'evolutionary algorithm', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 
 # This is to set optimization algorithm as simulated annealing, and scipy.dual_annealing is used to implement the algorithm
-# dict_algorithm_opt={'kisaoID':'KISAO:0000503','name':'simulated annealing', 'listOfAlgorithmParameters':[]}
+# dict_algorithm_opt={'kisaoID':'KISAO:0000503','name':'simulated annealing', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 
 # This is to set optimization algorithm as random search, and scipy.basinhopping is used to implement the algorithm
 # Note: basinhopping does not support bounds, and the bounds will be ignored
-# dict_algorithm_opt={'kisaoID':'KISAO:0000504','name':'random search', 'listOfAlgorithmParameters':[]}
+# dict_algorithm_opt={'kisaoID':'KISAO:0000504','name':'random search', 'listOfAlgorithmParameters':[dict_algorithmParameter_opt,dict_algorithmParameter_opt2]}
 
 # ***************** This is to set simulation algorithm *****************
 # This is to set the maximum step size for the simulation
-dict_algorithm_sim_parameter={'kisaoID':'KISAO:0000467','name':'max_step','value':'0.1'} 
+dict_algorithm_sim_parameter={'kisaoID':'KISAO:0000467','name':'max_step','value':'1'} 
 # You can set more algorithm parameters if needed. You can refer to get_KISAO_parameters() in src/simulator.py file to get the parameters for the specific algorithm
 # Add the algorithm parameters to listOfAlgorithmParameters
 # You can choose one of the simulation algorithms specified by KISAO_ALGORITHMS in src/simulator.py file
-dict_algorithm_sim={'kisaoID':'KISAO:0000030','name':'Euler forward method', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
-# dict_algorithm_sim={'kisaoID':'KISAO:0000535','name':'VODE', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
+# dict_algorithm_sim={'kisaoID':'KISAO:0000030','name':'Euler forward method', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
+dict_algorithm_sim={'kisaoID':'KISAO:0000535','name':'VODE', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
 
 
 # ******************** This is to modify the model parameters if needed ********************

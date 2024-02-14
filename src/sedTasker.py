@@ -250,7 +250,7 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     else:
         tol=1e-8
     if 'maxiter' in opt_parameters:
-        maxiter=opt_parameters['maxiter'] 
+        maxiter=int(opt_parameters['maxiter']) 
     else:
         maxiter=1000
     fitExperiments,adjustables=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
@@ -258,7 +258,8 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     initial_value=adjustables[2]
     if method=='global optimization algorithm':
         results = dict()
-        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),
+                               options={'ftol': tol, 'maxiter': maxiter})
         # print the best result
         best_result = None
         for key, result in results.items():
@@ -268,10 +269,10 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         print(best_result)
         return best_result
     elif method=='simulated annealing':
-        res=dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+        res=dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),maxiter=maxiter, x0=initial_value)
         print(res)
     elif method=='evolutionary algorithm':
-        res=differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type))
+        res=differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),maxiter=maxiter, tol=tol,x0=initial_value)
         print(res)
     elif method=='random search':
         res=basinhopping(objective_function, initial_value,minimizer_kwargs={'args':(external_variables_values, fitExperiments, doc, ss_time,cost_type)}) # cannot use bounds
