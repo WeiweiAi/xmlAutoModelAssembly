@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<model name="BG51" xmlns="http://www.cellml.org/cellml/1.1#" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
+    <!-- Intracellular pH regulation-->
+    <units name="dim">
+        <unit units="dimensionless"/>
+    </units>
+    <units name="per_s">
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="mol_per_s">
+        <unit units="mole"/>
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="per_mol">
+        <unit exponent="-1" units="mole"/>
+    </units>
+    <units name="per_mol2">
+        <unit exponent="-2" units="mole"/>
+    </units>
+    <units name="C_per_mol">
+        <unit units="coulomb"/>
+        <unit exponent="-1" units="mole"/>
+    </units>
+    <units name="J_per_mol">
+        <unit units="joule"/>
+        <unit exponent="-1" units="mole"/>
+    </units>
+    <units name="J_per_C">
+        <unit units="joule"/>
+        <unit exponent="-1" units="coulomb"/>
+    </units>
+    <component name="main">
+        <variable initial_value="0" name="q_CO2_i" units="mole"/>
+        <variable initial_value="1.1877" name="q_CO2_o" units="mole"/>
+        <variable name="v_CO2_m" public_interface="out" units="mol_per_s"/>
+        <variable initial_value="1e-8" name="K_CO2_o" units="per_mol"/>
+        <variable initial_value="1e-8" name="K_CO2_i" units="per_mol"/>
+        <variable name="t" units="second"/>
+        <variable name="Q_CO2_o" units="dim"/>
+        <variable name="Q_CO2_i" units="dim"/>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>Q_CO2_o</ci>
+                <apply>
+                    <times/>
+                    <ci>K_CO2_o</ci>
+                    <ci>q_CO2_o</ci>
+                </apply>
+            </apply>
+            <apply>
+                <eq/>
+                <ci>Q_CO2_i</ci>
+                <apply>
+                    <times/>
+                    <ci>K_CO2_i</ci>
+                    <ci>q_CO2_i</ci>
+                </apply>
+            </apply>
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>t</ci>
+                    </bvar>
+                    <ci>q_CO2_i</ci>
+                </apply>
+                <cn cellml:units="mol_per_s">0.02</cn>
+            </apply>
+        </math>
+        <variable initial_value="1.490e+07" name="v_CO2_max" units="mol_per_s"/>
+        <variable initial_value="1.837e-01" name="gamma_CO2" units="dim"/>
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>v_CO2_m</ci>
+                <apply>
+                    <divide/>
+                    <apply>
+                        <times/>
+                        <ci>v_CO2_max</ci>
+                        <apply>
+                            <minus/>
+                            <ci>Q_CO2_o</ci>
+                            <ci>Q_CO2_i</ci>
+                        </apply>
+                    </apply>
+                    <apply>
+                        <plus/>
+                        <apply>
+                            <divide/>
+                            <apply>
+                                <times/>
+                                <cn cellml:units="dim">2</cn>
+                                <ci>gamma_CO2</ci>
+                            </apply>
+                            <apply>
+                                <plus/>
+                                <cn cellml:units="dim">1</cn>
+                                <ci>gamma_CO2</ci>
+                            </apply>
+                        </apply>
+                        <ci>Q_CO2_o</ci>
+                        <ci>Q_CO2_i</ci>
+                        <apply>
+                            <times/>
+                            <apply>
+                                <divide/>
+                                <cn cellml:units="dim">2</cn>
+                                <apply>
+                                    <plus/>
+                                    <cn cellml:units="dim">1</cn>
+                                    <ci>gamma_CO2</ci>
+                                </apply>
+                            </apply>
+                            <ci>Q_CO2_o</ci>
+                            <ci>Q_CO2_i</ci>
+                        </apply>
+                    </apply>
+                </apply>
+            </apply>
+        </math>
+    </component>
+</model>
