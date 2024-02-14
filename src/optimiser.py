@@ -35,7 +35,12 @@ def get_KISAO_parameters_opt(algorithm):
         return method, opt_parameters
     elif algorithm['kisaoID'] in KISAO_ALGORITHMS.keys():
         method = KISAO_ALGORITHMS[algorithm['kisaoID']]
-        return method, None
+        for p in algorithm['listOfAlgorithmParameters']:
+            if p['kisaoID'] == 'KISAO:0000486':
+                opt_parameters['maxiter'] = float(p['value'])
+            elif p['kisaoID'] == 'KISAO:0000597':
+                opt_parameters['tol'] = float(p['value'])
+        return method, opt_parameters
     else:
         print("The algorithm {} is not supported!".format(algorithm['kisaoID']))
-        return None, None
+        return None, opt_parameters

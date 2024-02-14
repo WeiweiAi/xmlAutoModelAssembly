@@ -70,7 +70,8 @@ def toCellML2(oldPath, newPath, external_variables_info={},strict_mode=True, py_
     newPath: str
         The full path of the CellML 2.0 file (including the file name and extension).
     external_variables_info: dict
-        A dictionary of external variables information.
+        A dictionary of external variables information, in the format of {id:{'component': , 'name': }}.
+        Empty by default.
     strict_mode: bool
         If True, the model is checked against the CellML 2.0 specification.
     py_full_path: str
@@ -84,8 +85,7 @@ def toCellML2(oldPath, newPath, external_variables_info={},strict_mode=True, py_
     try:
         model_parse, issues=parse_model(oldPath, False)
     except Exception as e:
-        print(e)
-        return   
+        print(e)  
     print(issues)
     writeCellML(model_parse,newPath)
     analyser,issues=analyse_model_full(model_parse,newPath,external_variables_info,strict_mode)

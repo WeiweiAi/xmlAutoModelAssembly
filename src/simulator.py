@@ -979,7 +979,7 @@ def _get_variable_indices(analyser, model, variables_info):
     Notes
     -----
     The indices should be in the same order as the variables in the dictionary.
-    Hence, Python 3.6+ is required.
+    Hence, Python 3.7 is required.
     """
     try:
         observables=get_observables(analyser, model, variables_info)

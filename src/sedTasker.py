@@ -244,7 +244,15 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
     for dataDescription in doc.getListOfDataDescriptions() :
         dfDict.update({dataDescription.getId():get_df_from_dataDescription(dataDescription, working_dir)})
     dict_algorithm=get_dict_algorithm(task.getAlgorithm())
-    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)   
+    method, opt_parameters=get_KISAO_parameters_opt(dict_algorithm)
+    if 'tol' in opt_parameters:
+        tol=opt_parameters['tol']
+    else:
+        tol=1e-8
+    if 'maxiter' in opt_parameters:
+        maxiter=opt_parameters['maxiter'] 
+    else:
+        maxiter=1000
     fitExperiments,adjustables=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
     bounds=Bounds(adjustables[0],adjustables[1])
     initial_value=adjustables[2]
@@ -270,7 +278,7 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         print(res)
     elif method=='local optimization algorithm':
         res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time,cost_type), 
-                 bounds=bounds, ftol=1e-8, gtol=None, xtol=None, max_nfev=10000,)
+                 bounds=bounds, ftol=tol, gtol=tol, xtol=tol, max_nfev=maxiter)
         print(res)
     else:
         raise RuntimeError('Optimisation method not supported!')
@@ -385,7 +393,7 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
             elif cost_type=='Z-SCORE':
                 residuals[key]=abs(sim_value-exp_value)/numpy.std(exp_value)
                 residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])
-            elif cost_type is None:
+            elif cost_type is None or cost_type=='MSE':
                 # MSE is the default cost function
                 residuals[key]=(sim_value-exp_value)**2
                 residuals_sum+=numpy.sum(residuals[key]*observables_weight[key])/len(exp_value)              
