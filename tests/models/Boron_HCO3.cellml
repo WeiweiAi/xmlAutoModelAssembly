@@ -1,0 +1,133 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<model name="Boron_HCO3" xmlns="http://www.cellml.org/cellml/1.1#" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
+    <units name="per_s">
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="per_m">
+        <unit exponent="-1" units="metre"/>
+    </units>
+    <units name="m_per_s">
+        <unit units="metre"/>
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="mol_per_m3">
+        <unit units="mole"/>
+        <unit exponent="-3" units="metre"/>
+    </units>
+    <units name="mol_per_m2_s">
+        <unit exponent="1" units="mole"/>
+        <unit exponent="-2" units="metre"/>
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="mol_per_m3_s">
+        <unit exponent="1" units="mole"/>
+        <unit exponent="-3" units="metre"/>
+        <unit exponent="-1" units="second"/>
+    </units>
+    <units name="J_per_C">
+        <unit units="joule"/>
+        <unit exponent="-1" units="coulomb"/>
+    </units>
+    <units name="C_per_mol">
+        <unit units="coulomb"/>
+        <unit exponent="-1" units="mole"/>
+    </units>
+    <units name="J_per_mol_K">
+        <unit units="joule"/>
+        <unit exponent="-1" units="mole"/>
+        <unit exponent="-1" units="kelvin"/>
+    </units>
+    <units name="m3_per_mol">
+        <unit exponent="3" units="metre"/>
+        <unit exponent="-1" units="mole"/>
+    </units>
+    <component name="main">
+        <variable initial_value="0" name="HCO3_i" units="mol_per_m3"/>
+        <variable initial_value="60" name="HCO3_o" units="mol_per_m3"/>
+        <!-- Note: 5.0119e-05 mM (pH=7.3); 3.9811e-05 mM (pH=7.4)-->
+        <variable name="J_HCO3" public_interface="out" units="mol_per_m2_s"/>
+        <variable name="epsilon" units="dimensionless"/>
+        <variable initial_value="296.15" name="T" units="kelvin"/>
+        <variable initial_value="8.314" name="R" units="J_per_mol_K"/>
+        <variable initial_value="96485" name="F" units="C_per_mol"/>
+        <variable initial_value="5e-9" name="P_HCO3" units="m_per_s"/>
+        <variable name="t" units="second"/>
+        <!-- Note: equivalent to pK=6.0-->
+        <variable initial_value="-0.057" name="V_m" units="J_per_C"/>
+        <!-- Note: k varies from 0, 10, 75, 150, 300-->
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+                <eq/>
+                <ci>epsilon</ci>
+                <apply>
+                    <exp/>
+                    <apply>
+                        <divide/>
+                        <apply>
+                            <times/>
+                            <apply>
+                                <minus/>
+                                <ci>V_m</ci>
+                            </apply>
+                            <ci>F</ci>
+                        </apply>
+                        <apply>
+                            <times/>
+                            <ci>R</ci>
+                            <ci>T</ci>
+                        </apply>
+                    </apply>
+                </apply>
+            </apply>
+            <apply>
+                <eq/>
+                <ci>J_HCO3</ci>
+                <apply>
+                    <divide/>
+                    <apply>
+                        <times/>
+                        <apply>
+                            <divide/>
+                            <apply>
+                                <times/>
+                                <ci>P_HCO3</ci>
+                                <ci>V_m</ci>
+                                <ci>F</ci>
+                            </apply>
+                            <apply>
+                                <times/>
+                                <ci>R</ci>
+                                <ci>T</ci>
+                            </apply>
+                        </apply>
+                        <apply>
+                            <minus/>
+                            <ci>HCO3_o</ci>
+                            <apply>
+                                <times/>
+                                <ci>HCO3_i</ci>
+                                <ci>epsilon</ci>
+                            </apply>
+                        </apply>
+                    </apply>
+                    <apply>
+                        <minus/>
+                        <cn cellml:units="dimensionless">1</cn>
+                        <ci>epsilon</ci>
+                    </apply>
+                </apply>
+            </apply>
+            <apply>
+                <eq/>
+                <apply>
+                    <diff/>
+                    <bvar>
+                        <ci>t</ci>
+                    </bvar>
+                    <ci>HCO3_i</ci>
+                </apply>
+                <cn cellml:units="mol_per_m3_s">0.5</cn>
+            </apply>
+        </math>
+    </component>
+</model>

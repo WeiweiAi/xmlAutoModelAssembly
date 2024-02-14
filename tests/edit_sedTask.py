@@ -1,45 +1,73 @@
 import sys
-    # caution: path[0] is reserved for script path (or '' in REPL)
-sys.path.insert(0, '..')
-from src.sedDocEditor import create_dict_sedDocment, add_sedTask2dict, write_sedml, validate_sedml
+import os
+sys.path.append('../')
+from src.sedDocEditor import create_dict_sedDocment, add_sedTask2dict, write_sedml, validate_sedml,read_sedml
 from src.sedEditor import create_sedDocment
+from src.coder import toCellML2
+from src.sedDocExecutor import exec_sed_doc
 
-# This is a template for creating a sedml file
-# Create a dictionary for the sedml file
+# Convert the model to CellML 2.0 if needed
+path_='./models/'
+model_name='Boron_HCO3'
+modelfile= model_name + '.cellml'
+oldPath=path_+ modelfile
+# create a new directory for the new model if it does not exist
+if not os.path.exists(path_+'CellMLV2'):
+    os.makedirs(path_+'CellMLV2')
+
+newPath=path_+'CellMLV2/'+ modelfile
+# convert the model to CellML 2.0
+try:
+    toCellML2(oldPath, newPath, external_variables_info={},strict_mode=True, py_full_path=None)
+except Exception as err:
+    exit()
+# ********** TThe above can be commented out if the model is already in CellML 2.0 **********
+
+# ********** The following is to create a dictionary for the sedml file **********
 dict_sedDocument=create_dict_sedDocment()
-# This is the sedml file (relative) path and name
-sedFilename='./csv/SLCT3_BG_test.sedml' 
+# This is the sedml file (relative) path and name, assuming in the same folder with the CellML model file
+path_='./models/CellMLV2/'
+model_name='Boron_HCO3'
+model_id = model_name # This is the model id in the sedml, could be different from the model file name
+sedFilename = model_name+'.sedml' 
+full_path = path_+ sedFilename 
 
 # ********** The following is to add the task information to the dictionary **********
 
 # Note: the following is an example, you can modify it to add more tasks
 # Note: the valid sedml id should start with a letter, and only contain letters, numbers, and underscores
-
-# This is the model id in the sedml file, which is also the task id and output id
-model_name='SLCT3_BG_test'
 # This is the model file name, assuming in the same folder with the sedml file
-model_source='SLCT3_BG_test.cellml' 
+model_source = model_name + '.cellml' 
 # This is to modify the model parameters if needed
-changes={'id':{'component':'SLCT3_BG_io','name':'q_Ai','newValue':'200'}
+changes={
          } 
+# the format is {'id':{'component':str,'name':str,'newValue':str}}
+# Example: changes={'V_m':{'component':'main','name':'V_m','newValue':'-0.055'}
+
 # This is the output of the simulation, and the key is part of the output id
-outputs={'v_Ai':{'component':'SLCT3_BG_test','name':'v_Ai','scale':1.0}, 
-         'v_Ao':{'component':'SLCT3_BG_test','name':'v_Ao'},
-         't':{'component':'SLCT3_BG','name':'t'}
+# The value is a dictionary with the following keys: 'component', 'name', 'scale'
+# component is the component name in the CellML model where the output variable is defined
+# name is the variable name of the outputs
+# scale is the scaling factor for the output variable
+outputs={'J_HCO3':{'component':'main','name':'J_HCO3','scale':8000}, 
          }
+# You can add more outputs if needed
 
 # The following is the simulation setting
-# This is the algorithm parameter if needed
+# This is to set the maximum step size for the simulation
 dict_algorithmParameter={'kisaoID':'KISAO:0000467', 'name':'max_step','value':'1'} 
-# This is the ODE solver
+# You can set more algorithm parameters if needed. You can refer to get_KISAO_parameters() in src/simulator.py file to get the parameters for the specific algorithm
+# Add the algorithm parameters to listOfAlgorithmParameters
+# You can choose one of the simulation algorithms specified by KISAO_ALGORITHMS in src/simulator.py file
 dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[dict_algorithmParameter]} 
 # This is the simulation setting
-simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':2.3,'outputEndTime':1000,'numberOfSteps':1000}
+# You can choose one of the following simulation types: 'UniformTimeCourse', 'OneStep'
+simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':60,'numberOfSteps':60}
 # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
-# simSetting={'type':'SteadyState','algorithm':dict_algorithm}
+
 
 # The following is to add the task information to the dictionary
-add_sedTask2dict(dict_sedDocument, model_name, model_source,changes,simSetting,outputs)
+add_sedTask2dict(dict_sedDocument, model_id, model_source,changes,simSetting,outputs)
 
 # You can repeat the above steps to add more tasks with DIFFERENT model names.
 
@@ -49,6 +77,11 @@ try:
     doc=create_sedDocment(dict_sedDocument)
 except ValueError as err:
     print(err)
-write_sedml(doc,sedFilename)
-print(validate_sedml(sedFilename))
+write_sedml(doc,full_path)
+print(validate_sedml(full_path))
+
+doc=read_sedml(full_path) # Must read the sedml file again to avoid the error in the next step
+exec_sed_doc(doc, path_,path_, rel_out_path=None, external_variables_info={},
+              external_variables_values=[],ss_time={},cost_type=None)
+# Run the sedml file
    

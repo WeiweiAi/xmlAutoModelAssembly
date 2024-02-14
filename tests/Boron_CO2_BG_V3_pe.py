@@ -75,7 +75,7 @@ dict_algorithm_opt={'kisaoID':'KISAO:0000471','name':'local optimization algorit
 dict_algorithm_sim_parameter={'kisaoID':'KISAO:0000467','name':'max_step','value':'0.1'} 
 # You can set more algorithm parameters if needed. You can refer to get_KISAO_parameters() in src/simulator.py file to get the parameters for the specific algorithm
 # Add the algorithm parameters to listOfAlgorithmParameters
-# You can choose one of the following simulation algorithms specified by KISAO_ALGORITHMS in src/simulator.py file
+# You can choose one of the simulation algorithms specified by KISAO_ALGORITHMS in src/simulator.py file
 dict_algorithm_sim={'kisaoID':'KISAO:0000030','name':'Euler forward method', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
 # dict_algorithm_sim={'kisaoID':'KISAO:0000535','name':'VODE', 'listOfAlgorithmParameters':[dict_algorithm_sim_parameter]}
 
