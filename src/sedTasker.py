@@ -253,36 +253,32 @@ def exec_parameterEstimationTask( doc,task, working_dir,external_variables_info=
         maxiter=int(opt_parameters['maxiter']) 
     else:
         maxiter=1000
-    fitExperiments,adjustables=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
+    fitExperiments,adjustables,adjustableParameters_info=get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info)
     bounds=Bounds(adjustables[0],adjustables[1])
     initial_value=adjustables[2]
     if method=='global optimization algorithm':
-        results = dict()
-        results['shgo'] = shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),
+        res= shgo(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),
                                options={'ftol': tol, 'maxiter': maxiter})
-        # print the best result
-        best_result = None
-        for key, result in results.items():
-            print(key, result)
-            if best_result is None or result.fun < best_result.fun:
-                best_result = result
-        print(best_result)
-        return best_result
     elif method=='simulated annealing':
         res=dual_annealing(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),maxiter=maxiter, x0=initial_value)
-        print(res)
     elif method=='evolutionary algorithm':
         res=differential_evolution(objective_function, bounds,args=(external_variables_values, fitExperiments, doc, ss_time,cost_type),maxiter=maxiter, tol=tol,x0=initial_value)
-        print(res)
     elif method=='random search':
         res=basinhopping(objective_function, initial_value,minimizer_kwargs={'args':(external_variables_values, fitExperiments, doc, ss_time,cost_type)}) # cannot use bounds
-        print(res)
     elif method=='local optimization algorithm':
         res=least_squares(objective_function, initial_value, args=(external_variables_values, fitExperiments, doc, ss_time,cost_type), 
                  bounds=bounds, ftol=tol, gtol=tol, xtol=tol, max_nfev=maxiter)
-        print(res)
     else:
         raise RuntimeError('Optimisation method not supported!')
+    
+    i=0
+    for parameter in adjustableParameters_info.values():
+        print('The estimated value for variable {} in component {} is:'.format(parameter['name'],parameter['component']))
+        print(res.x[i])
+        i+=1
+    print('Values of objective function at the solution: {}'.format(res.fun))
+    print('The full optimization result is:')
+    print(res)
     return res
 
 def objective_function(param_vals, external_variables_values, fitExperiments, doc, ss_time,cost_type=None):

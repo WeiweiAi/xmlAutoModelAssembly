@@ -825,4 +825,4 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
         fitExperiments[fitExperiment.getId()].update({'cellml_model':cellml_model,'analyser':analyser, 'module':module, 'mtype':mtype,
                                                                             'external_variables_info':external_variables_info_new,
                                                                 'adj_param_indices':adj_param_indices,'parameters_values':parameters_values})      
-    return fitExperiments,adjustables 
+    return fitExperiments,adjustables,adjustableParameters_info 
