@@ -32,7 +32,6 @@ The module defines the following functions:
 SCIPY_SOLVERS = ['dopri5', 'dop853', 'VODE', 'LSODA']
 KISAO_ALGORITHMS = {'KISAO:0000030': 'Euler forward method',
                     'KISAO:0000535': 'VODE',
-                    'KISAO:0000536': 'ZVODE',
                     'KISAO:0000088': 'LSODA',
                     'KISAO:0000087': 'dopri5',
                     'KISAO:0000436': 'dop853',
@@ -162,7 +161,6 @@ def load_module(full_path):
     object
         The loaded module.    
     """
-
     if not os.path.isfile(full_path):
         raise FileNotFoundError('Model source file `{}` does not exist.'.format(full_path))
     
@@ -171,6 +169,7 @@ def load_module(full_path):
     if spec is None:
         raise FileNotFoundError('Unable to load module `{}`.'.format(module_name))    
     module = importlib.util.module_from_spec(spec)
+    
     spec.loader.exec_module(module)
 
     return module
@@ -225,7 +224,7 @@ def sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_modu
     else:
         step_size=None  
     
-    if mtype=='ode':
+    if mtype=='ode' or mtype=='dae':
         if sim_setting.method=='Euler forward method':
             try:
                 current_state=solve_euler(module, current_state, observables,
@@ -307,7 +306,7 @@ def sim_OneStep(mtype, module, sim_setting, observables, external_module, curren
     output_start_time=current_state[0]+step
     output_end_time=output_start_time
 
-    if mtype=='ode':
+    if mtype=='ode'or mtype=='dae':
         if sim_setting.method=='Euler forward method':
             try:
                 current_state=solve_euler(module, current_state, observables,
@@ -388,7 +387,7 @@ def sim_TimeCourse(mtype, module, sim_setting, observables, external_module,curr
     else:
         step_size=None  
     
-    if mtype=='ode':
+    if mtype=='ode'or mtype=='dae':
         if sim_setting.method=='Euler forward method':
             for i in range(number_of_steps):
                 try:
@@ -486,7 +485,7 @@ def sim_SteadyState(mtype, module, sim_setting, observables, external_module, cu
     t0=sim_setting.initial_time
     tf=100
 
-    if mtype=='ode':
+    if mtype=='ode'or mtype=='dae':
         while ftol>1e-6:
             if sim_setting.method=='Euler forward method':
                 current_state=solve_euler(module, current_state, observables,

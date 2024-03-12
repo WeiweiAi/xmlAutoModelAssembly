@@ -180,7 +180,7 @@ def initialize_module(mtype, observables, N, module, voi=0, external_module=None
     sed_results=create_sed_results(observables, N)    
     external_variable=None
     
-    if mtype=='ode':
+    if mtype=='ode' or mtype=='dae':
         try:
             if external_module:
                 external_variable=external_module.external_variable_ode
