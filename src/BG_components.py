@@ -430,8 +430,8 @@ def biochem_components_units():
     biochem_components['components']['Ce']['params']['T']['symbol'] = 'T'
     biochem_components['components']['Ce']['params']['q_init']['symbol'] = 'q_init'
 
-    biochem_components['components']['Ce']['vars']['e_0']['units'] = 'mu'
-    biochem_components['components']['Ce']['vars']['f_0']['units'] = 'v'
+    biochem_components['components']['Ce']['vars']['e_0']['units'] = 'J_per_mol'
+    biochem_components['components']['Ce']['vars']['f_0']['units'] = 'fmol_per_s'
     biochem_components['components']['Ce']['vars']['e_0']['symbol'] = 'mu'
     biochem_components['components']['Ce']['vars']['f_0']['symbol'] = 'v'
     biochem_components['components']['Ce']['vars']['e_0']['IOType'] = 'out'

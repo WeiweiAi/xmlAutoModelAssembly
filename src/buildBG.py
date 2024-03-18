@@ -1,5 +1,5 @@
-from BG_components import e_components_units, biochem_components_units
-from readBG import load_matrix
+from .BG_components import e_components_units, biochem_components_units
+from .readBG import load_matrix
 import os
 import copy
 print(os.getcwd())
@@ -7,10 +7,10 @@ defUnit=["ampere","becquerel","candela","celsius","coulomb","dimensionless","far
     "hertz","joule","katal","kelvin","kilogram","liter","litre","lumen","lux","meter","metre","mole",
     "newton","ohm","pascal","radian","second","siemens","sievert","steradian","tesla","volt","watt","weber"]
 params_common=['R','T','F']
-def buildBG(fmatrix,rmatrix):
+def buildBG(fmatrix,rmatrix,file_path='./'):
     e_components=e_components_units()['components']
     biochem_components=biochem_components_units()['components']
-    CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(fmatrix,rmatrix)
+    CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(file_path+fmatrix,file_path+rmatrix)
     compNames=CompName+ReName
     compTypes=CompType+ReType
     # Use the CompType and ReType to look up the corresponding components in the e_components and biochem_components
@@ -61,6 +61,7 @@ def buildBG(fmatrix,rmatrix):
                 else:
                     comp_dict[reName]['ports']['0']['out']+=[CompName[i]+f':{N_r[i,j]}']
                 comp_dict[CompName[i]]['ports']['0']['in']+=[reName+f':{N_r[i,j]}']               
+    update_eqn(comp_dict)
     return comp_dict
 
 def update_eqn(comp_dict):
@@ -98,13 +99,18 @@ def update_eqn(comp_dict):
             in_flows_vars=get_flow_outputs(in_flows_)
             # Get all out flows
             out_flows_=comp['ports']['0']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)              
-            comp['conservation_relations']=[
+            out_flows_vars=get_flow_outputs(out_flows_)
+            if len(out_flows_vars)>0:              
+                comp['conservation_relations']=[
                 f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-            ]
+                ]
+            else:
+                comp['conservation_relations']=[
+                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)}",
+                ]
         elif comp['type']=='Re':
             comp['constitutive_relations']=[
-            f"{comp['vars']['f_0']['symbol']} = {comp['params']['kappa']['symbol']}*(exp({comp['vars']['e_0']['symbol']}/(R*T)) - exp({comp['vars']['e_1']['symbol']}/(R*T))"
+            f"{comp['vars']['f_0']['symbol']} = {comp['params']['kappa']['symbol']}*(exp({comp['vars']['e_0']['symbol']}/(R*T)) - exp({comp['vars']['e_1']['symbol']}/(R*T)))"
           ]
              # Get all in effors
             in_efforts_=comp['ports']['0']['in']
@@ -128,10 +134,15 @@ def update_eqn(comp_dict):
             in_flows_vars=get_flow_outputs(in_flows_)
             # Get all out flows
             out_flows_=comp['ports']['0']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)              
-            comp['conservation_relations']=[
+            out_flows_vars=get_flow_outputs(out_flows_)
+            if len(out_flows_vars)>0:              
+                comp['conservation_relations']=[
                 f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-            ]
+                ]              
+            else:
+                comp['conservation_relations']=[
+                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)}",
+                ]
             
         elif comp['type']=='R':
             comp['constitutive_relations']=[
@@ -143,9 +154,14 @@ def update_eqn(comp_dict):
             # Get all out effors
             out_efforts_=comp['ports']['0']['out']
             out_efforts_vars=get_efforts_outputs(out_efforts_)
-            comp['conservation_relations']=[
+            if len(out_efforts_vars)>0:              
+                comp['conservation_relations']=[
                 f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}-{'+'.join(out_efforts_vars)}",
-            ]
+                ]
+            else:
+                comp['conservation_relations']=[
+                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}",
+                ]
         elif comp['type']=='Se':
             comp['constitutive_relations']=[
                 f"{comp['vars']['e_0']['symbol']}={comp['params']['e']['symbol']}"
@@ -174,9 +190,21 @@ def update_eqn(comp_dict):
             # Get all out effors
             out_efforts_=comp['ports']['0']['out']
             out_efforts_vars=get_efforts_outputs(out_efforts_)
-            comp['conservation_relations']=[
+            if len(out_efforts_vars)>0:              
+                comp['conservation_relations']=[
                 f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}-{'+'.join(out_efforts_vars)}",
+                ]
+            else:
+                comp['conservation_relations']=[
+                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)},"
+                ]
+            if len(out_flows_vars)>0:
+                comp['conservation_relations']+=[
                 f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
+            ]
+            else:
+                comp['conservation_relations']+=[
+                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)}",
             ]
 
         elif comp['type']=='GY':
@@ -186,7 +214,7 @@ def update_eqn(comp_dict):
             ]
     return comp_dict
 
-def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.txt'):
+def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.txt',file_path='./'):
     indent=' '*4
     cellml_code=f'def model {model_name} as\n'
     cellml_code+=indent+'def import using "./units.cellml" for\n'
@@ -205,11 +233,11 @@ def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.t
 
     cellml_code+=indent+f'def comp {model_name} as\n'
     if 'R' in params_common_set:
-        cellml_code+=indent*2+f"var R: J_per_K_mol"+f"{{ pub: in}};\n"
+        cellml_code+=indent*2+f"var R: J_per_K_mol"+f"{{ init: 8.31, pub: out}};\n"
     if 'T' in params_common_set:
-        cellml_code+=indent*2+f"var T: kelvin"+f"{{ pub: in}};\n"
+        cellml_code+=indent*2+f"var T: kelvin"+f"{{ init: 293, pub: out}};\n"
     if 'F' in params_common_set:
-        cellml_code+=indent*2+f'var F: C_per_mol'+f"{{ pub: in}};\n"
+        cellml_code+=indent*2+f'var F: C_per_mol'+f"{{ init: 96485, pub: out}};\n"
     for comp in comp_dict:
         for param in comp_dict[comp]['params']:
             if param not in ['R','T','F']:
@@ -218,11 +246,11 @@ def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.t
     cellml_code+=indent+'enddef;\n'
     cellml_code+='enddef;\n'
     # Save the model to a file
-    with open(model_file, 'w') as f:
+    with open(file_path+model_file, 'w') as f:
         f.write(cellml_code)
     return cellml_code
 
-def to_cellmlV1_models(comp_dict, model_name='BG',model_file='BG.txt',params_file='params_BG.cellml'):
+def to_cellmlV1_models(comp_dict, model_name='BG',model_file='BG.txt',params_file='params_BG.cellml',file_path='./'):
     indent=' '*4
     # Apart from parameters, add vairables, state variables, constitutive relations and conservation relations
     param_units=set()
@@ -284,7 +312,7 @@ def to_cellmlV1_models(comp_dict, model_name='BG',model_file='BG.txt',params_fil
     cellml_code+=cellml_code_constitutive_relations
     cellml_code+=cellml_code_conservation_relations
     cellml_code+=indent+f"enddef;\n"
-    cellml_code+=indent+'def map between params and BG for\n'
+    cellml_code+=indent+f'def map between {params_model_name} and {model_name} for\n'
     if 'R' in params_common_set:
         cellml_code+=indent*2+'vars R and R;\n'
     if 'T' in params_common_set:
@@ -299,7 +327,7 @@ def to_cellmlV1_models(comp_dict, model_name='BG',model_file='BG.txt',params_fil
 
     cellml_code+='enddef;\n'
     # Save the model to a file
-    with open(model_file, 'w') as f:
+    with open(file_path+model_file, 'w') as f:
         f.write(cellml_code)
     return cellml_code
 
@@ -326,7 +354,6 @@ if __name__ == "__main__":
     fmatrix='./tests/SLCT4_f.csv'
     rmatrix='./tests/SLCT4_r.csv'
     comp_dict=buildBG(fmatrix,rmatrix) 
-    update_eqn(comp_dict) 
     cellml_code=to_cellmlV1_params(comp_dict) 
     print(cellml_code)
     cellml_code=to_cellmlV1_models(comp_dict)
