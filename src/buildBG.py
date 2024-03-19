@@ -92,7 +92,7 @@ def update_eqn(comp_dict):
     
     for key, comp in comp_dict.items():
         if comp['type']=='Ce':
-            comp['constitutive_relations']=[f"{comp['vars']['e_0']['symbol']} = R*T*log({comp['params']['K']['symbol']}*{comp['state_vars']['q_0']['symbol']})",
+            comp['constitutive_relations']=[f"{comp['vars']['e_0']['symbol']} = R*T*ln({comp['params']['K']['symbol']}*{comp['state_vars']['q_0']['symbol']})",
             f"ode({comp['state_vars']['q_0']['symbol']},t) = {comp['vars']['f_0']['symbol']}"]
             # Get all in flows
             in_flows_=comp['ports']['0']['in']
