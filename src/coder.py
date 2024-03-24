@@ -1,5 +1,6 @@
 from libcellml import Generator, GeneratorProfile, Printer
 from .analyser import parse_model,analyse_model_full
+import os
 """
 =================
 Code generation
@@ -88,7 +89,8 @@ def toCellML2(oldPath, newPath, external_variables_info={},strict_mode=True, py_
         print(e)  
     print(issues)
     writeCellML(model_parse,newPath)
-    analyser,issues=analyse_model_full(model_parse,newPath,external_variables_info,strict_mode)
+    base_dir=os.path.dirname(newPath)
+    analyser,issues=analyse_model_full(model_parse,base_dir,external_variables_info,strict_mode)
     print(issues)
     if py_full_path is not None:
         writePythonCode(analyser, py_full_path)

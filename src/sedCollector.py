@@ -3,11 +3,11 @@ import os
 import pandas
 import tempfile
 import re
-from .sedModel_changes import get_variable_info_CellML,resolve_model_and_apply_xml_changes
+from .sedModel_changes import get_variable_info_CellML,resolve_model_and_apply_xml_changes,resolve_model
 from .simulator import  get_observables,get_KISAO_parameters,SimSettings,load_module
 from .sedEditor import get_dict_algorithm
-from .analyser import parse_model,analyse_model_full,get_mtype
-from .coder import writePythonCode
+from .analyser import parse_model,analyse_model_full,get_mtype,resolve_imports
+from .coder import writePythonCode,writeCellML
 import copy
 import numpy as np
 
@@ -663,8 +663,23 @@ def get_fit_experiments_1(doc,task,working_dir,dfDict,external_variables_info={}
     original_models = get_models_referenced_by_task(doc,task)
     model=original_models[0] # parameter estimation task should have only one model
     try:
+        temp_model_source=resolve_model(model, doc, working_dir)
+
+        if temp_model_source is None:
+            temp_model_source =model.getSource()
+        cellml_model,parse_issues=parse_model(temp_model_source, True)
+        importer,issues_import=resolve_imports(cellml_model, working_dir,True)
+        flatModel=importer.flattenModel(cellml_model)
+        if not flatModel:
+            raise RuntimeError('Model flattening failed!')
+        else:
+            full_path = working_dir+ model.getId()+'_flat.cellml'
+            writeCellML(flatModel, full_path)
+            model.setSource(full_path)
+
         temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(model, doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
+        os.remove(full_path)
         # cleanup modified model sources
         os.remove(temp_model_source)
         if not cellml_model:

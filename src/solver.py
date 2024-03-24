@@ -97,6 +97,9 @@ def _initialize_module_ode(module, voi, external_variable=None, parameters={}):
             raise ValueError('The parameter type {} of is not supported!'.format(v['type']))
     
     module.compute_computed_constants(variables)
+    module.compute_computed_constants(variables) # Need to call it twice to update the computed constants;TODO: need to discuss with the libCellML team
+    module.compute_variables(voi, states, rates, variables)
+    module.compute_rates(voi, states, rates, variables)
 
     return states, rates, variables
 
@@ -139,7 +142,8 @@ def _initialize_module_algebraic(module,external_variable=None,parameters={}):
         else:
             raise ValueError('The parameter type {} is not supported!'.format(v['type']))
            
-    module.compute_computed_constants(variables) 
+    module.compute_computed_constants(variables)
+    module.compute_variables(variables) 
 
     return variables
 
@@ -225,9 +229,13 @@ def _update_rates(voi, states, rates, variables, module, external_variable=None)
         The updated rates of change of the system.
     """
     if external_variable:
+     #  _update_variables(voi, states, rates, variables, module, external_variable)
        module.compute_rates(voi, states, rates, variables,external_variable)
+       _update_variables(voi, states, rates, variables, module, external_variable)
     else:
+    #    _update_variables(voi, states, rates, variables, module)
         module.compute_rates(voi, states, rates, variables)
+        _update_variables(voi, states, rates, variables, module)
     return rates    
 
 def _update_variables(voi, states, rates, variables, module, external_variable=None):
@@ -466,7 +474,7 @@ def solve_scipy(module, current_state, observables, output_start_time, output_en
     solver.set_f_params(rates, variables, module, external_variable)
     solver.set_integrator(method, **integrator_parameters)
 
-    if output_start_time > output_end_time or number_of_steps < 1:
+    if output_start_time > output_end_time or number_of_steps < 0:
         raise ValueError('output_start_time must be less than output_end_time and number_of_steps must be greater than 0.')
     elif output_start_time == output_end_time and number_of_steps>0:
         raise ValueError('when output_start_time = output_end_time, number_of_steps must be 0.')

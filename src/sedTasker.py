@@ -1,9 +1,9 @@
 from .sedCollector import get_models_referenced_by_task, get_variables_for_task, get_df_from_dataDescription, get_fit_experiments_1
-from .sedModel_changes import resolve_model_and_apply_xml_changes, get_variable_info_CellML,calc_data_generator_results
+from .sedModel_changes import resolve_model_and_apply_xml_changes, get_variable_info_CellML,calc_data_generator_results,resolve_model
 from .sedEditor import get_dict_algorithm
 from .optimiser import get_KISAO_parameters_opt
-from .analyser import analyse_model_full, get_mtype,parse_model
-from .coder import writePythonCode
+from .analyser import analyse_model_full, get_mtype,parse_model,resolve_imports
+from .coder import writePythonCode,writeCellML
 from .simulator import getSimSettingFromSedSim, sim_UniformTimeCourse, get_observables, load_module, sim_OneStep, sim_TimeCourse,get_externals_varies
 from .sedReporter import exec_report
 import tempfile
@@ -64,9 +64,26 @@ def exec_task(doc,task,working_dir,external_variables_info={},external_variables
         raise RuntimeError('Task does not record any variables.')
     # apply changes to the model if any
     try:
-        temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(original_models[0], doc, working_dir) # must set save_to_file=True
+        #need to flatten the model if it is not already flat
+        sed_model=original_models[0]
+        temp_model_source=resolve_model(original_models[0], doc, working_dir)
+
+        if temp_model_source is None:
+            temp_model_source =sed_model.getSource()
+        cellml_model,parse_issues=parse_model(temp_model_source, True)
+        importer,issues_import=resolve_imports(cellml_model, working_dir,True)
+        flatModel=importer.flattenModel(cellml_model)
+        if not flatModel:
+            raise RuntimeError('Model flattening failed!')
+        else:
+            full_path = working_dir+ sed_model.getId()+'_flat.cellml'
+            writeCellML(flatModel, full_path)
+            sed_model.setSource(full_path)
+
+        temp_model, temp_model_source, model_etree = resolve_model_and_apply_xml_changes(sed_model, doc, working_dir) # must set save_to_file=True
         cellml_model,parse_issues=parse_model(temp_model_source, True)
         # cleanup modified model sources
+        os.remove(full_path)
         os.remove(temp_model_source)
         if cellml_model:
             model_base_dir=os.path.dirname(temp_model.getSource())
@@ -350,6 +367,9 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
             observable_exp_temp=observables_exp[list(observables_exp.keys())[0]]
             for i in range(len(observable_exp_temp)): # assume all observables and experimental conditions have the same number of data points
                 sim_setting.step=ss_time[fitid]
+                sim_setting.output_start_time=sim_setting.step 
+                sim_setting.output_end_time=sim_setting.step
+                sim_setting.number_of_steps=0
                 parameters_value=[]
                 for parameter in parameters_values:
                     parameters_value.append(parameter[i])
@@ -361,14 +381,16 @@ def objective_function(param_vals, external_variables_values, fitExperiments, do
                     raise RuntimeError(exception)
                 if i==0:
                     try:
-                        current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                        #current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
+                        current_state=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=None,parameters=parameters)
                         sed_results = copy.deepcopy(current_state[-1])
                     except RuntimeError as exception:
                         print(exception)
                         return 1e12
                 else:
                     try:
-                        current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
+                      #  current_state=sim_OneStep(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
+                        current_state=sim_UniformTimeCourse(mtype, module, sim_setting, observables, external_module,current_state=current_state,parameters=parameters)
                         for key, value in current_state[-1].items():
                             sed_results[key]=numpy.append(sed_results[key],value)
                     except RuntimeError as exception:
