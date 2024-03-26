@@ -29,7 +29,7 @@ def subplots_ajdust(fig_cfg, **subtitle_kwargs):
     # expressed as a fraction of the average axis height, 0.2
     rows, cols = fig_cfg.get('num_rows', 1), fig_cfg.get('num_cols', 1)
     width, height = fig_cfg.get('width', 6), fig_cfg.get('height', 9)    
-    fig, axs = plt.subplots(rows,cols,figsize=(width, height))
+    fig, axs = plt.subplots(rows,cols,figsize=(width, height),squeeze=False)
     y=fig_cfg.get('title_y', 0.98) # The y location of the text in figure coordinates.
     fig.suptitle(fig_cfg.get('fig_title', ''), y=fig_cfg.get('title_y', 0.98), fontsize=fig_cfg.get('fontsize', 10), **subtitle_kwargs)
     fig.subplots_adjust(left=left, bottom=bottom, right=right, top=top, wspace=wspace, hspace=hspace)
