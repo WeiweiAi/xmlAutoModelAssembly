@@ -98,8 +98,8 @@ def _initialize_module_ode(module, voi, external_variable=None, parameters={}):
     
     module.compute_computed_constants(variables)
     module.compute_computed_constants(variables) # Need to call it twice to update the computed constants;TODO: need to discuss with the libCellML team
-    module.compute_variables(voi, states, rates, variables)
     module.compute_rates(voi, states, rates, variables)
+    module.compute_variables(voi, states, rates, variables)
 
     return states, rates, variables
 

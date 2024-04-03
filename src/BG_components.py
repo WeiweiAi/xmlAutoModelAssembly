@@ -371,12 +371,12 @@ def e_components_units():
     e_components['components'].pop('Sf')
     e_components['components']['e_Se']['params']['e']['units'] = 'volt'
     e_components['components']['e_Sf']['params']['f']['units'] = 'fA'
-    e_components['components']['e_Se']['params']['e']['symbol'] = 'E0'
+    e_components['components']['e_Se']['params']['e']['symbol'] = 'V0'
     e_components['components']['e_Sf']['params']['f']['symbol'] = 'I0'
     e_components['components']['e_Sf']['vars']['f_0']['units'] = 'fA'
     e_components['components']['e_Se']['vars']['e_0']['units'] = 'volt'
     e_components['components']['e_Sf']['vars']['f_0']['symbol'] = 'I'
-    e_components['components']['e_Se']['vars']['e_0']['symbol'] = 'E'
+    e_components['components']['e_Se']['vars']['e_0']['symbol'] = 'V'
     e_components['components']['e_Sf']['vars']['f_0']['IOType'] = 'out'
     e_components['components']['e_Se']['vars']['e_0']['IOType'] = 'out'
 
@@ -396,14 +396,18 @@ def e_components_units():
     e_components['components']['C']['state_vars']['q_0']['IOType'] = 'out'
    
     e_components['components']['zF'] = copy.deepcopy(_base_components()['components']['TF'])
-    e_components['components']['zF']['params']['r']['units'] = 'C_per_mol'
-    e_components['components']['zF']['params']['r']['symbol'] = 'zF'
+    e_components['components']['zF']['params']['r']['units'] = 'dimensionless'
+    e_components['components']['zF']['params']['r']['symbol'] = 'z'
+    # add F to the parameters in the zF components for physiology applications
+    e_components['components']['zF']['params']['F'] = {}
+    e_components['components']['zF']['params']['F']['units'] = 'C_per_mol'
+    e_components['components']['zF']['params']['F']['symbol'] = 'F'
 
     e_components['components']['zF']['vars']['e_0']['units'] = 'volt'
     e_components['components']['zF']['vars']['f_0']['units'] = 'fA' 
     e_components['components']['zF']['vars']['e_1']['units'] = 'J_per_mol'
     e_components['components']['zF']['vars']['f_1']['units'] = 'fmol_per_s' 
-    e_components['components']['zF']['vars']['e_0']['symbol'] = 'E'
+    e_components['components']['zF']['vars']['e_0']['symbol'] = 'V'
     e_components['components']['zF']['vars']['f_0']['symbol'] = 'I' 
     e_components['components']['zF']['vars']['e_1']['symbol'] = 'mu'
     e_components['components']['zF']['vars']['f_1']['symbol'] = 'v'    
