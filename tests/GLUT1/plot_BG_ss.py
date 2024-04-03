@@ -10,8 +10,6 @@ filename_BG_io = path_+'GLUT1_BG_ss_io.csv'
 filename_BG_oi = path_+'GLUT1_BG_ss_oi.csv'
 filename_ss_io_free = path_+'report_task_GLUT1_ss_io_no_constraint.csv'
 filename_ss_oi_free = path_+'report_task_GLUT1_ss_oi_no_constraint.csv'
-filename_ss_io = path_+'report_task_GLUT1_ss_io.csv'
-filename_ss_oi = path_+'report_task_GLUT1_ss_oi.csv'
 
 
 outputs={'glu':{'component':'main','name':'glu','scale':1},
@@ -58,9 +56,9 @@ line_cfg[5] = { 'xdata': (filename_ss_io_free,'q_Ai'), 'ydata':(filename_ss_io_f
                 'color': 'r', 'linestyle': '--',  'legend_label': 'io_ss_free'}
 line_cfg[6] = { 'xdata': (filename_ss_oi_free,'q_Ao'), 'ydata':(filename_ss_oi_free,'v_free'),
                 'color': 'r', 'linestyle': '--',  'legend_label': 'oi_ss_free'}
-line_cfg[7] = { 'xdata': (filename_ss_io,'q_Ai'), 'ydata':(filename_ss_io,'v'),
+line_cfg[7] = { 'xdata': (filename_ss_io_free,'q_Ai'), 'ydata':(filename_ss_io_free,'v'),
                 'color': 'r', 'linestyle': '-.',  'legend_label': 'io_ss'}
-line_cfg[8] = { 'xdata': (filename_ss_oi,'q_Ao'), 'ydata':(filename_ss_oi,'v'),
+line_cfg[8] = { 'xdata': (filename_ss_oi_free,'q_Ao'), 'ydata':(filename_ss_oi_free,'v'),
                 'color': 'r', 'linestyle': '-.',  'legend_label': 'oi_ss'}
 
 plot_cfg[1] = {'ylabel': 'v_io_ss', 'xlabel': 'q_Ai (mM)','show_grid': 'both', 'grid_axis': 'both',

@@ -51,7 +51,8 @@ changes={
 # name is the variable name of the outputs
 # scale is the scaling factor for the output variable
 outputs={'t':{'component':'GLUT1_BG','name':'t','scale':1},
-         'v_free':{'component':'GLUT1_BG','name':'v_free','scale':1/90},         
+         'v_free':{'component':'GLUT1_BG','name':'v_free','scale':1/90}, 
+         'v':{'component':'GLUT1_BG','name':'v','scale':1/90},        
          'q_Ao':{'component':'GLUT1_BG','name':'q_Ao','scale':1/90},
          }
 # You can add more outputs if needed
