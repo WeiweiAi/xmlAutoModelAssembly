@@ -1,8 +1,9 @@
 from .BG_components import e_components_units, biochem_components_units
-from .readBG import load_matrix
+from .readBG import load_matrix,kinetic2BGparams
 import os
 import copy
-print(os.getcwd())
+import numpy as np
+
 defUnit=["ampere","becquerel","candela","celsius","coulomb","dimensionless","farad","gram","gray","henry",
     "hertz","joule","katal","kelvin","kilogram","liter","litre","lumen","lux","meter","metre","mole",
     "newton","ohm","pascal","radian","second","siemens","sievert","steradian","tesla","volt","watt","weber"]
@@ -13,6 +14,8 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
     CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(file_path+fmatrix,file_path+rmatrix)
     compNames=CompName+ReName
     compTypes=CompType+ReType
+    n_zeros=len(CompName)
+    n_ones=len(ReName)
     # Use the CompType and ReType to look up the corresponding components in the e_components and biochem_components
     # Get the parameters for components and declare the parameters in the format: "var varName: varUnits {init: 1, pub: out}}"
     # Save the parameters in a dictionary with the key as the variable name and the value as the cellml code
@@ -20,65 +23,79 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
     for i in range(len(compNames)):
         compType=compTypes[i]
         compName=compNames[i]
+        compIndex=str(i)
         if compType in e_components.keys():
-            comp_dict[compName]=copy.deepcopy(e_components[compType])
-            comp_dict[compName]['type']=compType
+            comp_dict[compIndex]=copy.deepcopy(e_components[compType])
+            comp_dict[compIndex]['type']=compType
             # Instantiate the parameters, variables and constitutive relations for the component
-            for param in comp_dict[compName]['params'].keys():
+            for param in comp_dict[compIndex]['params'].keys():
                 if param not in params_common:
-                    comp_dict[compName]['params'][param]['symbol']=comp_dict[compName]['params'][param]['symbol']+ '_' + compName
-            for var in comp_dict[compName]['vars'].keys():
-                comp_dict[compName]['vars'][var]['symbol']=comp_dict[compName]['vars'][var]['symbol']+ '_' + compName
+                    comp_dict[compIndex]['params'][param]['symbol']=comp_dict[compIndex]['params'][param]['symbol']+ '_' + compName
+            for var in comp_dict[compIndex]['vars'].keys():
+                comp_dict[compIndex]['vars'][var]['symbol']=comp_dict[compIndex]['vars'][var]['symbol']+ '_' + compName
             if 'state_vars' in e_components[compType].keys():                  
                 for state_var in e_components[compType]['state_vars'].keys():
-                    comp_dict[compName]['state_vars'][state_var]['symbol']=comp_dict[compName]['state_vars'][state_var]['symbol']+ '_' + compName                  
+                    comp_dict[compIndex]['state_vars'][state_var]['symbol']=comp_dict[compIndex]['state_vars'][state_var]['symbol']+ '_' + compName                  
         elif compType in biochem_components.keys():
-            comp_dict[compName]=copy.deepcopy(biochem_components[compType])
-            comp_dict[compName]['type']=compType
+            comp_dict[compIndex]=copy.deepcopy(biochem_components[compType])
+            comp_dict[compIndex]['type']=compType
             # Instantiate the parameters, variables and constitutive relations for the component
-            for param in comp_dict[compName]['params'].keys():
+            for param in comp_dict[compIndex]['params'].keys():
                 if param not in params_common:
-                    comp_dict[compName]['params'][param]['symbol']=comp_dict[compName]['params'][param]['symbol']+ '_' + compName
-            for var in comp_dict[compName]['vars'].keys():
-                comp_dict[compName]['vars'][var]['symbol']=comp_dict[compName]['vars'][var]['symbol']+ '_' + compName
+                    comp_dict[compIndex]['params'][param]['symbol']=comp_dict[compIndex]['params'][param]['symbol']+ '_' + compName
+            for var in comp_dict[compIndex]['vars'].keys():
+                comp_dict[compIndex]['vars'][var]['symbol']=comp_dict[compIndex]['vars'][var]['symbol']+ '_' + compName
             if 'state_vars' in biochem_components[compType].keys():                    
                 for state_var in biochem_components[compType]['state_vars'].keys():
-                    comp_dict[compName]['state_vars'][state_var]['symbol']=comp_dict[compName]['state_vars'][state_var]['symbol']+ '_' + compName
+                    comp_dict[compIndex]['state_vars'][state_var]['symbol']=comp_dict[compIndex]['state_vars'][state_var]['symbol']+ '_' + compName
         else:
             print('The component type is not found in the e_components and biochem_components')
 
     for j in range(len(ReName)):
         # The e_0 of the R component is the sum of the e_0 of each C component in the column of N_f[i,:]
         # The e_1 of the R component is the sum of the e_0 of each C component in the column of N_r[i,:]
-        reName=ReName[j]
+        reIndex=str(j+n_zeros)
         for i in range(len(CompName)):
+            compIndex=str(i)
             if N_f[i,j]>0:
-                comp_dict[reName]['ports']['0']['in']+=[CompName[i]+f':{N_f[i,j]}']
-                if  'f_0' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_0']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['0']['out']+=[reName+f':{N_f[i,j]}']
-                if 'f_1' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_1']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['1']['out']+=[reName+f':{N_f[i,j]}']
+                comp_dict[reIndex]['ports']['0']['in']+=[compIndex+f':{N_f[i,j]}']
+                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['0']['out']+=[reIndex+f':{N_f[i,j]}']
+                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['1']['out']+=[reIndex+f':{N_f[i,j]}']
             if N_f[i,j]<0:
-                comp_dict[reName]['ports']['0']['out']+=[CompName[i]+f':{abs(N_f[i,j])}']
-                if  'f_0' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_0']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['0']['in']+=[reName+f':{abs(N_f[i,j])}']
-                if 'f_1' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_1']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['1']['in']+=[reName+f':{abs(N_f[i,j])}']
+                comp_dict[reIndex]['ports']['0']['out']+=[compIndex+f':{abs(N_f[i,j])}']
+                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['0']['in']+=[reIndex+f':{abs(N_f[i,j])}']
+                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['1']['in']+=[reIndex+f':{abs(N_f[i,j])}']
             if N_r[i,j]>0:
-                comp_dict[reName]['ports']['1']['out']+=[CompName[i]+f':{N_r[i,j]}']
-                if  'f_0' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_0']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['0']['in']+=[reName+f':{N_r[i,j]}']
-                if 'f_1' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_1']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['1']['in']+=[reName+f':{N_r[i,j]}']
+                comp_dict[reIndex]['ports']['1']['out']+=[compIndex+f':{N_r[i,j]}']
+                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['0']['in']+=[reIndex+f':{N_r[i,j]}']
+                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['1']['in']+=[reIndex+f':{N_r[i,j]}']
             if N_r[i,j]<0:
-                comp_dict[reName]['ports']['1']['in']+=[CompName[i]+f':{abs(N_r[i,j])}']
-                if  'f_0' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_0']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['0']['out']+=[reName+f':{abs(N_r[i,j])}']
-                if 'f_1' in comp_dict[CompName[i]]['vars'].keys() and comp_dict[CompName[i]]['vars']['f_1']['IOType']=='in':
-                    comp_dict[CompName[i]]['ports']['1']['out']+=[reName+f':{abs(N_r[i,j])}']
+                comp_dict[reIndex]['ports']['1']['in']+=[compIndex+f':{abs(N_r[i,j])}']
+                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['0']['out']+=[reIndex+f':{abs(N_r[i,j])}']
+                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+                    comp_dict[compIndex]['ports']['1']['out']+=[reIndex+f':{abs(N_r[i,j])}']
 
     update_eqn(comp_dict)
     return comp_dict
+
+def update_params(comp_dict,n_zeros, kappa, K, Ws):
+    # assume that the kappa and K are in the same order as the components in the comp_dict
+    if K.size>0:
+        for i in range(len(K)):
+            compIndex=str(i)
+            comp_dict[compIndex]['params']['K']['value']=K[i][0]
+    if kappa.size>0:
+        for i in range(len(kappa)):
+            compIndex=str(i+n_zeros)
+            comp_dict[compIndex]['params']['kappa']['value']=kappa[i][0]        
+            
 
 def update_eqn(comp_dict):
     def get_flow_outputs(sub_comps):
@@ -412,9 +429,23 @@ def print_comp_dict(comp_dict):
     return comp_dict
             
 if __name__ == "__main__": 
-    fmatrix='./tests/SLCT4_f.csv'
-    rmatrix='./tests/SLCT4_r.csv'
+    fmatrix='../tests/SLC2_f.csv'
+    rmatrix='../tests/SLC2_r.csv'
     comp_dict=buildBG(fmatrix,rmatrix) 
+    CompName,CompType,ReName,ReType,N_f,N_r=load_matrix('../tests/SLC2_f.csv','../tests/SLC2_r.csv')
+    kf=np.array([[0.726, 1113, 50, 128.456]]).transpose()
+    kr=np.array([[12.1, 90.3, 50*9.5,10]]).transpose()
+    K_c=np.array([[1]]).transpose()
+    N_c=np.array([[1,-1,0,0,0,0]]).transpose()
+   # K_c=np.array([[]]).transpose()
+   # N_c=np.array([[]]).transpose()
+    V_i=90
+    V_o=90
+    V_E=90
+    Ws=np.array([[V_i,V_o,V_E,V_E,V_E,V_E]]).transpose()
+    kappa, K, diff, zero_est= kinetic2BGparams(N_f,N_r,kf,kr,K_c,N_c,Ws)
+    n_zeros=len(CompName)
+    update_params(comp_dict,n_zeros, kappa, K)
     cellml_code=to_cellmlV1_params(comp_dict) 
     print(cellml_code)
     cellml_code=to_cellmlV1_models(comp_dict)

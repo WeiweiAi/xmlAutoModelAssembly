@@ -8,7 +8,7 @@ from src.sedDocExecutor import exec_sed_doc
 
 # Convert the model to CellML 2.0 if needed
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/'
-model_name='GLUT1_BG'
+model_name='GLUT1_BG_0'
 modelfile= model_name + '.cellml'
 oldPath=path_+ modelfile
 # create a new directory for the new model if it does not exist

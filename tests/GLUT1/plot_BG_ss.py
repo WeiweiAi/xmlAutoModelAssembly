@@ -6,8 +6,8 @@ path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
 
 save_fig = {'save_fig': True, 'fig_format': 'png', 'file_path': path_, 'filename': 'BG_fit_ss'}
 filename = path_+'report_task_GLUT1_kinetic.csv'
-filename_BG_io = path_+'GLUT1_BG_ss_io.csv'
-filename_BG_oi = path_+'GLUT1_BG_ss_oi.csv'
+filename_BG_io = path_+'GLUT1_BG_0_ss_io.csv'
+filename_BG_oi = path_+'GLUT1_BG_0_ss_oi.csv'
 filename_ss_io_free = path_+'report_task_GLUT1_ss_io_no_constraint.csv'
 filename_ss_oi_free = path_+'report_task_GLUT1_ss_oi_no_constraint.csv'
 

@@ -1,6 +1,6 @@
 import os
 csv_files = []
-model_name = 'GLUT1_BG'
+model_name = 'GLUT1_BG_0'
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
 for model_id in range(25):
     sed_model_id = model_name+f'_{model_id}_io'
