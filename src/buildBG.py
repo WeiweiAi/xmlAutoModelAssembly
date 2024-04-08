@@ -1,6 +1,6 @@
 from .BG_components import e_components_units, biochem_components_units
 from .readBG import load_matrix,kinetic2BGparams
-import os
+import pandas as pd
 import copy
 import numpy as np
 
@@ -85,17 +85,71 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
     update_eqn(comp_dict)
     return comp_dict
 
-def update_params(comp_dict,n_zeros, kappa, K, Ws):
+def update_params(comp_dict,n_zeros, kappa, K, csv='params_BG.csv'):
     # assume that the kappa and K are in the same order as the components in the comp_dict
+    # Create a pd frame with the columns: Parameter, Value, and Unit
+    csv_pd=pd.DataFrame(columns=['Parameter','Value','Unit'])
     if K.size>0:
         for i in range(len(K)):
             compIndex=str(i)
-            comp_dict[compIndex]['params']['K']['value']=K[i][0]
+            if abs(K[i][0])<1e-3 or abs(K[i][0])>1e3:
+                K_="{:.2e}".format(K[i][0])
+            else:
+                K_="{:.2f}".format(K[i][0])
+            comp_dict[compIndex]['params']['K']['value']=K_
+            str_var=comp_dict[compIndex]['params']['K']['symbol']
+            # split the string with the underscore and get the first element
+            sub_str_1=str_var.split('_')[0]
+            if len(str_var.split('_'))>1:
+                sub_str_2=str_var.split('_')[1]
+                latex_str='$'+sub_str_1+'_{'+sub_str_2+'}$'
+            else:
+                sub_str_2=''
+                latex_str='$'+sub_str_1+'$'
+
+            units=comp_dict[compIndex]['params']['K']['units']
+            # split the string with the underscore and 'per'
+            unit_latex_str=''
+            if 'per' in units:
+                unit_latex_str+=str.join('.',units.split('per')[0].split('_'))
+                units_per=units.split('per')[1]
+                for j in range(len(units_per.split('_'))-1):
+                    unit_latex_str+=units_per.split('_')[j+1]+'$^{-1}$'
+            else:
+                unit_latex_str+=str.join('.',units.split('_'))
+
+            csv_pd.loc[i]=[latex_str,K_,unit_latex_str]
     if kappa.size>0:
         for i in range(len(kappa)):
             compIndex=str(i+n_zeros)
-            comp_dict[compIndex]['params']['kappa']['value']=kappa[i][0]        
-            
+            if abs(kappa[i][0])<1e-3 or abs(kappa[i][0])>1e3:
+                kappa_="{:.2e}".format(kappa[i][0])
+            else:
+                kappa_="{:.2f}".format(kappa[i][0])
+            comp_dict[compIndex]['params']['kappa']['value']=kappa_
+            str_var=comp_dict[compIndex]['params']['kappa']['symbol']
+            # split the string with the underscore and get the first element
+            sub_str_1=str_var.split('_')[0]
+            if len(str_var.split('_'))>1:
+                sub_str_2=str_var.split('_')[1]
+                latex_str='$\\'+sub_str_1+'_{'+sub_str_2+'}$'
+            else:
+                sub_str_2=''
+                latex_str='$\\'+sub_str_1+'$'
+            units=comp_dict[compIndex]['params']['kappa']['units']
+            # split the string with the underscore and 'per'
+            unit_latex_str=''
+            if 'per' in units:
+                unit_latex_str+=str.join('.',units.split('per')[0].split('_'))
+                units_per=units.split('per')[1]
+                for j in range(len(units_per.split('_'))-1):
+                    unit_latex_str+=units_per.split('_')[j+1]+'$^{-1}$'
+            else:
+                unit_latex_str+=str.join('.',units.split('_'))
+           
+            csv_pd.loc[i+len(K)]=[latex_str,kappa_,unit_latex_str]
+
+    csv_pd.to_csv(csv,index=False)        
 
 def update_eqn(comp_dict):
     def get_flow_outputs(sub_comps):
