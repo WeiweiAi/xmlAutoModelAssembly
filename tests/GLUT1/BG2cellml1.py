@@ -12,15 +12,15 @@ comp_dict=buildBG(fmatrix,rmatrix,file_path)
 CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(file_path+fmatrix,file_path+rmatrix)
 V=1
 V_o=90
-h=0.726;g=12.1;c=1113;d=90.3;a=500*V_o;b=a*9.5;f=3*V_o;e=12.8459*f
+h=0.726;g=12.1;c=1113;d=90.3;a=500000*V_o;b=a*9.5;f=3000*V_o;e=12.8459*f
 kf=np.array([[h, c, a, e]]).transpose()
 kr=np.array([[g, d, b, f]]).transpose()
 K_c=np.array([[1]]).transpose()
 N_c=np.array([[1,-1,0,0,0,0]]).transpose()
 K_c=np.array([[]]).transpose()
 N_c=np.array([[]]).transpose()
-V_i=90
-V_o=90
+V_i=0.09
+V_o=0.09
 V_E=1
 Ws=np.array([[V_i,V_o,V_E,V_E,V_E,V_E]]).transpose()
 kappa, K, K_eq, diff,  zero_est= kinetic2BGparams(N_f,N_r,kf,kr,K_c,N_c,Ws)
@@ -53,6 +53,7 @@ assert np.isclose(kappa4*K4*V_E*KA*V_o, f)
 print(kappa4*K3*V_E, e)
 
 n_zeros=len(CompName)
-update_params(comp_dict,n_zeros, kappa, K,Ws)
+csv_file=file_path+'SLC2_BG.csv'
+update_params(comp_dict,n_zeros, kappa, K,csv_file)
 to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.txt',file_path=file_path)
 to_cellmlV1_models(comp_dict, model_name='GLUT1_BG',model_file='GLUT1_BG_0.txt',params_file='params_BG.cellml',file_path=file_path)

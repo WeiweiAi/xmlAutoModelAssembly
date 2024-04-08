@@ -8,7 +8,7 @@ from src.sedDocExecutor import exec_sed_doc
 
 # Convert the model to CellML 2.0 if needed
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/'
-model_name='GLUT1_BG_0'
+model_name='GLUT1_BG'
 modelfile= model_name + '.cellml'
 oldPath=path_+ modelfile
 # create a new directory for the new model if it does not exist
@@ -56,8 +56,8 @@ for model_id in range(25):
     # name is the variable name of the outputs
     # scale is the scaling factor for the output variable
     outputs={'t':{'component':'GLUT1_BG','name':'t','scale':1},
-             'v_r1':{'component':'GLUT1_BG','name':'v_r1','scale':-1/90},         
-             'q_init_Ai':{'component':'GLUT1_BG','name':'q_init_Ai','scale':1/90},
+             'v_r1':{'component':'GLUT1_BG','name':'v_r1','scale':-1},         
+             'q_init_Ai':{'component':'GLUT1_BG','name':'q_init_Ai','scale':1/0.09},
              }
     # You can add more outputs if needed
 

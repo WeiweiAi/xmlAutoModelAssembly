@@ -7,7 +7,7 @@ from src.coder import toCellML2
 
 # Specify the path to the model and the model name
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/'
-for model_name in ['params_BG_fit_ss_io','params_BG_fit_ss_oi','params_BG_fit','params_BG','GLUT1_BG_0']:
+for model_name in ['GLUT1_ss_oi','GLUT1_ss_io','params_BG','GLUT1_BG']:
     modelfile= model_name + '.cellml'
     oldPath=path_+ modelfile
 
@@ -15,7 +15,7 @@ for model_name in ['params_BG_fit_ss_io','params_BG_fit_ss_oi','params_BG_fit','
     if not os.path.exists(path_+'CellMLV2'):
         os.makedirs(path_+'CellMLV2')
     newPath=path_+'CellMLV2/'+ modelfile
-    if model_name == 'GLUT1_BG_0' or model_name == 'GLUT1_ss_oi_no_constraint':
+    if model_name == 'GLUT1_BG' or model_name == 'GLUT1_ss_oi' or model_name == 'GLUT1_ss_io':
         py_full_path=newPath.replace('.cellml','.py')
     else:
         py_full_path=None
