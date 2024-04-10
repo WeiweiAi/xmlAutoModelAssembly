@@ -23,7 +23,7 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
     for i in range(len(compNames)):
         compType=compTypes[i]
         compName=compNames[i]
-        compIndex=str(i)
+        compIndex=compName # compName is the key for the dictionary, make it unique; the ReName and CompName may have overlap;
         if compType in e_components.keys():
             comp_dict[compIndex]=copy.deepcopy(e_components[compType])
             comp_dict[compIndex]['type']=compType
@@ -54,49 +54,49 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
     for j in range(len(ReName)):
         # The e_0 of the R component is the sum of the e_0 of each C component in the column of N_f[i,:]
         # The e_1 of the R component is the sum of the e_0 of each C component in the column of N_r[i,:]
-        reIndex=str(j+n_zeros)
+        reIndex=ReName[j]
         for i in range(len(CompName)):
-            compIndex=str(i)
-            if N_f[i,j]>0:
+            compIndex=CompName[i]
+            # 0 node to 1 node on port 0; 
+            if N_f[i,j]!=0:
                 comp_dict[reIndex]['ports']['0']['in']+=[compIndex+f':{N_f[i,j]}']
-                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['0']['out']+=[reIndex+f':{N_f[i,j]}']
-                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['1']['out']+=[reIndex+f':{N_f[i,j]}']
-            if N_f[i,j]<0:
-                comp_dict[reIndex]['ports']['0']['out']+=[compIndex+f':{abs(N_f[i,j])}']
-                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['0']['in']+=[reIndex+f':{abs(N_f[i,j])}']
-                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['1']['in']+=[reIndex+f':{abs(N_f[i,j])}']
-            if N_r[i,j]>0:
-                comp_dict[reIndex]['ports']['1']['out']+=[compIndex+f':{N_r[i,j]}']
-                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+            # 0 node to 1 node on port 1; 
+            if N_r[i,j]!=0:
+                comp_dict[reIndex]['ports']['1']['in']+=[compIndex+f':{-N_r[i,j]}']
+            # 1 node to 0 node on port 0; 
+            if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
+                if N_f[i,j]!=0:
+                    comp_dict[compIndex]['ports']['0']['in']+=[reIndex+f':{-N_f[i,j]}']
+
+                if N_r[i,j]!=0:
                     comp_dict[compIndex]['ports']['0']['in']+=[reIndex+f':{N_r[i,j]}']
-                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+            # 1 node to 0 node on port 1;
+            if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
+                if N_f[i,j]!=0:
+                    comp_dict[compIndex]['ports']['1']['in']+=[reIndex+f':{-N_f[i,j]}']
+
+                if N_r[i,j]!=0:
                     comp_dict[compIndex]['ports']['1']['in']+=[reIndex+f':{N_r[i,j]}']
-            if N_r[i,j]<0:
-                comp_dict[reIndex]['ports']['1']['in']+=[compIndex+f':{abs(N_r[i,j])}']
-                if  'f_0' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_0']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['0']['out']+=[reIndex+f':{abs(N_r[i,j])}']
-                if 'f_1' in comp_dict[compIndex]['vars'].keys() and comp_dict[compIndex]['vars']['f_1']['IOType']=='in':
-                    comp_dict[compIndex]['ports']['1']['out']+=[reIndex+f':{abs(N_r[i,j])}']
 
     update_eqn(comp_dict)
     return comp_dict
 
-def update_params(comp_dict,n_zeros, kappa, K, csv='params_BG.csv'):
+def update_params(comp_dict,n_zeros, kappa, K, q_init_all, csv='params_BG.csv'):
     # assume that the kappa and K are in the same order as the components in the comp_dict
     # Create a pd frame with the columns: Parameter, Value, and Unit
     csv_pd=pd.DataFrame(columns=['Parameter','Value','Unit'])
     if K.size>0:
+        j=0
         for i in range(len(K)):
-            compIndex=str(i)
-            if abs(K[i][0])<1e-3 or abs(K[i][0])>1e3:
-                K_="{:.2e}".format(K[i][0])
+            compIndex=list(comp_dict)[i]
+            if abs(K[i][0])<1e-2 or abs(K[i][0])>1e2:
+                K_="{:.3e}".format(K[i][0])
             else:
-                K_="{:.2f}".format(K[i][0])
+                K_="{:.3f}".format(K[i][0])
             comp_dict[compIndex]['params']['K']['value']=K_
+            if 'q_init' in comp_dict[compIndex]['params'].keys() and comp_dict[compIndex]['type']=='Ce':
+                comp_dict[compIndex]['params']['q_init']['value']=q_init_all[j][0]
+                j+=1
             str_var=comp_dict[compIndex]['params']['K']['symbol']
             # split the string with the underscore and get the first element
             sub_str_1=str_var.split('_')[0]
@@ -121,11 +121,11 @@ def update_params(comp_dict,n_zeros, kappa, K, csv='params_BG.csv'):
             csv_pd.loc[i]=[latex_str,K_,unit_latex_str]
     if kappa.size>0:
         for i in range(len(kappa)):
-            compIndex=str(i+n_zeros)
-            if abs(kappa[i][0])<1e-3 or abs(kappa[i][0])>1e3:
-                kappa_="{:.2e}".format(kappa[i][0])
+            compIndex=list(comp_dict)[i+n_zeros]
+            if abs(kappa[i][0])<1e-2 or abs(kappa[i][0])>1e2:
+                kappa_="{:.3e}".format(kappa[i][0])
             else:
-                kappa_="{:.2f}".format(kappa[i][0])
+                kappa_="{:.3f}".format(kappa[i][0])
             comp_dict[compIndex]['params']['kappa']['value']=kappa_
             str_var=comp_dict[compIndex]['params']['kappa']['symbol']
             # split the string with the underscore and get the first element
@@ -157,24 +157,48 @@ def update_eqn(comp_dict):
         for comp in sub_comps:
             comp_name=comp.split(':')[0]
             stochoimetry=comp.split(':')[1]
+            try:
+                num_stochoimetry=int(stochoimetry)
+            except:
+                try:
+                    num_stochoimetry=float(stochoimetry)
+                except:
+                    raise ValueError('The stochoimetry is not an integer or a float')
+
             for var in comp_dict[comp_name]['vars']:
                 if 'Flow' in comp_dict[comp_name]['vars'][var]['description'] and comp_dict[comp_name]['vars'][var]['IOType']=='out':
                     if stochoimetry=='1':
-                        flow_outputs+=[comp_dict[comp_name]['vars'][var]['symbol']]
+                        flow_outputs+=[f"+{comp_dict[comp_name]['vars'][var]['symbol']}"]
+                    elif stochoimetry=='-1':
+                        flow_outputs+=[f"-{comp_dict[comp_name]['vars'][var]['symbol']}"]
+                    elif num_stochoimetry>0:
+                        flow_outputs+=[f"+{num_stochoimetry}{{dimensionless}}*{comp_dict[comp_name]['vars'][var]['symbol']}"]
                     else:
-                        flow_outputs+=[comp_dict[comp_name]['vars'][var]['symbol']+f"*{stochoimetry}{{dimensionless}}"]
+                        flow_outputs+=[f"-{-num_stochoimetry}{{dimensionless}}*{comp_dict[comp_name]['vars'][var]['symbol']}"]
+                        
         return flow_outputs 
     def get_efforts_outputs(sub_comps):
         efforts_outputs=[]
         for comp in sub_comps:
             comp_name=comp.split(':')[0]
             stochoimetry=comp.split(':')[1]
+            try:
+                num_stochoimetry=int(stochoimetry)
+            except:
+                try:
+                    num_stochoimetry=float(stochoimetry)
+                except:
+                    raise ValueError('The stochoimetry is not an integer or a float')
             for var in comp_dict[comp_name]['vars']:
                 if 'Potential' in comp_dict[comp_name]['vars'][var]['description'] and comp_dict[comp_name]['vars'][var]['IOType']=='out':
                     if stochoimetry=='1':
-                        efforts_outputs+=[comp_dict[comp_name]['vars'][var]['symbol']]
+                        efforts_outputs+=[f"+{comp_dict[comp_name]['vars'][var]['symbol']}"]
+                    elif stochoimetry=='-1':
+                        efforts_outputs+=[f"-{comp_dict[comp_name]['vars'][var]['symbol']}"]
+                    elif num_stochoimetry>0:
+                        efforts_outputs+=[f"+{num_stochoimetry}{{dimensionless}}*{comp_dict[comp_name]['vars'][var]['symbol']}"]
                     else:
-                        efforts_outputs+=[comp_dict[comp_name]['vars'][var]['symbol']+f"*{stochoimetry}{{dimensionless}}"]
+                        efforts_outputs+=[f"-{-num_stochoimetry}{{dimensionless}}*{comp_dict[comp_name]['vars'][var]['symbol']}"]
         return efforts_outputs
     
     for key, comp in comp_dict.items():
@@ -184,17 +208,13 @@ def update_eqn(comp_dict):
             # Get all in flows
             in_flows_=comp['ports']['0']['in']
             in_flows_vars=get_flow_outputs(in_flows_)
-            # Get all out flows
-            out_flows_=comp['ports']['0']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)
-            if len(out_flows_vars)>0:              
-                comp['conservation_relations']=[
-                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-                ]
-            else:
-                comp['conservation_relations']=[
-                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)}",
-                ]
+            sum_in_flows=' '.join(in_flows_vars)
+            sum_in_flows= sum_in_flows[1:] if sum_in_flows[0]=='+' else sum_in_flows
+            comp['conservation_relations']=[
+                f"{comp['vars']['f_0']['symbol']} = {sum_in_flows}",
+                ]               
+        elif comp['type']=='ch_Se':
+            comp['constitutive_relations']=[f"{comp['vars']['e_0']['symbol']} = R*T*ln({comp['params']['K']['symbol']}*{comp['params']['q_init']['symbol']})"]            
         elif comp['type']=='Re':
             comp['constitutive_relations']=[
             f"{comp['vars']['f_0']['symbol']} = {comp['params']['kappa']['symbol']}*(exp({comp['vars']['e_0']['symbol']}/(R*T)) - exp({comp['vars']['e_1']['symbol']}/(R*T)))"
@@ -202,17 +222,18 @@ def update_eqn(comp_dict):
              # Get all in effors
             in_efforts_port0_=comp['ports']['0']['in']
             in_efforts_port0_vars=get_efforts_outputs(in_efforts_port0_)
+            sum_in_efforts_port0=' '.join(in_efforts_port0_vars)
+            sum_in_efforts_port0= sum_in_efforts_port0[1:] if sum_in_efforts_port0[0]=='+' else sum_in_efforts_port0
+
             in_efforts_port1_=comp['ports']['1']['in']
             in_efforts_port1_vars=get_efforts_outputs(in_efforts_port1_)
-            # Get all out effors
-            out_efforts_port0_=comp['ports']['0']['out']
-            out_efforts_port0_vars=get_efforts_outputs(out_efforts_port0_)
-            out_efforts_port1_=comp['ports']['1']['out']
-            out_efforts_port1_vars=get_efforts_outputs(out_efforts_port1_)
-
+            sum_in_efforts_port1=' '.join(in_efforts_port1_vars)
+            sum_out_efforts_port1 = sum_in_efforts_port1.replace('+','plus').replace('-','+').replace('plus','-')
+            sum_out_efforts_port1= sum_out_efforts_port1[1:] if sum_out_efforts_port1[0]=='+' else sum_out_efforts_port1
+            
             comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} =  {'+'.join(in_efforts_port0_vars)} - {'+'.join(out_efforts_port0_vars)}" if len(out_efforts_port0_vars)>0 else f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_port0_vars)}",
-                f"{comp['vars']['e_1']['symbol']} = {'+'.join(out_efforts_port1_vars)} - {'+'.join(in_efforts_port1_vars)}" if len(in_efforts_port1_vars)>0 else f"{comp['vars']['e_1']['symbol']} = {'+'.join(out_efforts_port1_vars)}",
+                f"{comp['vars']['e_0']['symbol']} = {sum_in_efforts_port0}",
+                f"{comp['vars']['e_1']['symbol']} = {sum_out_efforts_port1}",
             ]
         elif comp['type']=='C':
             comp['constitutive_relations']=[
@@ -222,16 +243,10 @@ def update_eqn(comp_dict):
              # Get all in flows
             in_flows_=comp['ports']['0']['in']
             in_flows_vars=get_flow_outputs(in_flows_)
-            # Get all out flows
-            out_flows_=comp['ports']['0']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)
-            if len(out_flows_vars)>0:              
-                comp['conservation_relations']=[
-                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-                ]              
-            else:
-                comp['conservation_relations']=[
-                f"{comp['vars']['f_0']['symbol']} = {'+'.join(in_flows_vars)}",
+            sum_in_flows=' '.join(in_flows_vars)
+            sum_in_flows= sum_in_flows[1:] if sum_in_flows[0]=='+' else sum_in_flows
+            comp['conservation_relations']=[
+                f"{comp['vars']['f_0']['symbol']} = {sum_in_flows}",
                 ]
             
         elif comp['type']=='R':
@@ -241,17 +256,11 @@ def update_eqn(comp_dict):
             # Get all in effors
             in_efforts_=comp['ports']['0']['in']
             in_efforts_vars=get_efforts_outputs(in_efforts_)
-            # Get all out effors
-            out_efforts_=comp['ports']['0']['out']
-            out_efforts_vars=get_efforts_outputs(out_efforts_)
-            if len(out_efforts_vars)>0:              
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}-{'+'.join(out_efforts_vars)}",
-                ]
-            else:
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}",
-                ]
+            sum_in_efforts=' '.join(in_efforts_vars)
+            sum_in_efforts= sum_in_efforts[1:] if sum_in_efforts[0]=='+' else sum_in_efforts
+            comp['conservation_relations']=[
+                f"{comp['vars']['e_0']['symbol']} = {sum_in_efforts}",
+                ]                
         elif comp['type']=='Se':
             comp['constitutive_relations']=[
                 f"{comp['vars']['e_0']['symbol']}={comp['params']['e']['symbol']}"
@@ -273,70 +282,45 @@ def update_eqn(comp_dict):
                 f"{comp['vars']['e_1']['symbol']}={comp['params']['r']['symbol']}*{comp['vars']['e_0']['symbol']}",
                 f"{comp['vars']['f_0']['symbol']}={comp['params']['r']['symbol']}*{comp['vars']['f_1']['symbol']}"
             ]
-            # Get all in flows
+            # Get all in flows on port 1
             in_flows_=comp['ports']['1']['in']
             in_flows_vars=get_flow_outputs(in_flows_)
-            # Get all out flows
-            out_flows_=comp['ports']['1']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)              
-            # Get all in effors
+            sum_in_flows=' '.join(in_flows_vars)
+            sum_in_flows= sum_in_flows[1:] if sum_in_flows[0]=='+' else sum_in_flows
+            comp['conservation_relations']=[
+                f"{comp['vars']['f_1']['symbol']} = {sum_in_flows}",
+            ]                      
+            # Get all in effors on port 0
             in_efforts_=comp['ports']['0']['in']
             in_efforts_vars=get_efforts_outputs(in_efforts_)
-            # Get all out effors
-            out_efforts_=comp['ports']['0']['out']
-            out_efforts_vars=get_efforts_outputs(out_efforts_)
-            if len(out_efforts_vars)>0:              
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}-{'+'.join(out_efforts_vars)}",
+            sum_in_efforts=' '.join(in_efforts_vars)
+            sum_out_efforts=sum_in_efforts.replace('+','plus').replace('-','+').replace('plus','-')
+            sum_out_efforts= sum_out_efforts[1:] if sum_out_efforts[0]=='+' else sum_out_efforts
+            comp['conservation_relations']+=[
+                f"{comp['vars']['e_0']['symbol']} = {sum_out_efforts}"
                 ]
-            else:
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}"
-                ]
-            if len(out_flows_vars)>0:
-                comp['conservation_relations']+=[
-                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-            ]
-            else:
-                comp['conservation_relations']+=[
-                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)}",
-            ]
         elif comp['type']=='zF':
             comp['constitutive_relations']=[
                 f"{comp['vars']['e_1']['symbol']}={comp['params']['r']['symbol']}*F*{comp['vars']['e_0']['symbol']}",
                 f"{comp['vars']['f_0']['symbol']}={comp['params']['r']['symbol']}*F*{comp['vars']['f_1']['symbol']}"
             ]
-            # Get all in flows
+             # Get all in flows on port 1
             in_flows_=comp['ports']['1']['in']
             in_flows_vars=get_flow_outputs(in_flows_)
-            # Get all out flows
-            out_flows_=comp['ports']['1']['out']
-            out_flows_vars=get_flow_outputs(out_flows_)              
+            sum_in_flows=' '.join(in_flows_vars)
+            sum_in_flows= sum_in_flows[1:] if sum_in_flows[0]=='+' else sum_in_flows
             comp['conservation_relations']=[
-                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-            ]
-            # Get all in effors
+                f"{comp['vars']['f_1']['symbol']} = {sum_in_flows}",
+            ]                      
+            # Get all in effors on port 0
             in_efforts_=comp['ports']['0']['in']
             in_efforts_vars=get_efforts_outputs(in_efforts_)
-            # Get all out effors
-            out_efforts_=comp['ports']['0']['out']
-            out_efforts_vars=get_efforts_outputs(out_efforts_)
-            if len(out_efforts_vars)>0:              
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}-{'+'.join(out_efforts_vars)}",
+            sum_in_efforts=' '.join(in_efforts_vars)
+            sum_out_efforts=sum_in_efforts.replace('+','plus').replace('-','+').replace('plus','-')
+            sum_out_efforts= sum_out_efforts[1:] if sum_out_efforts[0]=='+' else sum_out_efforts
+            comp['conservation_relations']+=[
+                f"{comp['vars']['e_0']['symbol']} = {sum_out_efforts}"
                 ]
-            else:
-                comp['conservation_relations']=[
-                f"{comp['vars']['e_0']['symbol']} = {'+'.join(in_efforts_vars)}"
-                ]
-            if len(out_flows_vars)>0:
-                comp['conservation_relations']+=[
-                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)} - {'+'.join(out_flows_vars)}",
-            ]
-            else:
-                comp['conservation_relations']+=[
-                f"{comp['vars']['f_1']['symbol']} = {'+'.join(in_flows_vars)}",
-            ]
 
         elif comp['type']=='GY':
             comp['constitutive_relations']=[
@@ -372,7 +356,11 @@ def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.t
     for comp in comp_dict:
         for param in comp_dict[comp]['params']:
             if param not in ['R','T','F']:
-                cellml_code+=indent*2+f"var {comp_dict[comp]['params'][param]['symbol']}: {comp_dict[comp]['params'][param]['units']}" + f"{{ init: {comp_dict[comp]['params'][param]['value']}, pub: out}};\n"
+                if (comp_dict[comp]['type']=="ch_Se" and param=='q_init') or (comp_dict[comp]['type']=='e_Se' and param =='e'): 
+                    cellml_code+=indent*2+f"var {comp_dict[comp]['params'][param]['symbol']}: {comp_dict[comp]['params'][param]['units']}" + f"{{ pub: out}};\n"
+                else:
+                    cellml_code+=indent*2+f"var {comp_dict[comp]['params'][param]['symbol']}: {comp_dict[comp]['params'][param]['units']}" + f"{{ init: {comp_dict[comp]['params'][param]['value']}, pub: out}};\n"
+                    
         
     cellml_code+=indent+'enddef;\n'
     cellml_code+='enddef;\n'

@@ -444,6 +444,11 @@ def biochem_components_units():
     biochem_components['components']['Ce']['state_vars']['q_0']['symbol'] = 'q'
     biochem_components['components']['Ce']['state_vars']['q_0']['IOType'] = 'out'
 
+    biochem_components['components']['ch_Se'] = copy.deepcopy(biochem_components['components']['Ce'])
+    biochem_components['components']['ch_Se']['params']['q_init']['symbol'] = 'q'
+    biochem_components['components']['ch_Se'].pop('state_vars')
+    biochem_components['components']['ch_Se']['vars'].pop('f_0')
+
     biochem_components['components']['Re']['params']['kappa']['units'] = 'fmol_per_s'
     biochem_components['components']['Re']['params']['R']['units'] = 'J_per_K_mol'
     biochem_components['components']['Re']['params']['T']['units'] = 'kelvin'
