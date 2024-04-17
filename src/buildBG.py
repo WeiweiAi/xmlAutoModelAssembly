@@ -1,4 +1,4 @@
-from .BG_components import e_components_units, biochem_components_units
+from .BG_components import e_components_units, biochem_components_units,m_components_units
 from .readBG import load_matrix,kinetic2BGparams
 import pandas as pd
 import copy
@@ -11,6 +11,7 @@ params_common=['R','T','F']
 def buildBG(fmatrix,rmatrix,file_path='./'):
     e_components=e_components_units()['components']
     biochem_components=biochem_components_units()['components']
+    m_components=m_components_units()['components']
     CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(file_path+fmatrix,file_path+rmatrix)
     compNames=CompName+ReName
     compTypes=CompType+ReType
@@ -48,8 +49,20 @@ def buildBG(fmatrix,rmatrix,file_path='./'):
             if 'state_vars' in biochem_components[compType].keys():                    
                 for state_var in biochem_components[compType]['state_vars'].keys():
                     comp_dict[compIndex]['state_vars'][state_var]['symbol']=comp_dict[compIndex]['state_vars'][state_var]['symbol']+ '_' + compName
+        elif compType in m_components.keys():
+            comp_dict[compIndex]=copy.deepcopy(m_components[compType])
+            comp_dict[compIndex]['type']=compType
+            # Instantiate the parameters, variables and constitutive relations for the component
+            for param in comp_dict[compIndex]['params'].keys():
+                if param not in params_common:
+                    comp_dict[compIndex]['params'][param]['symbol']=comp_dict[compIndex]['params'][param]['symbol']+ '_' + compName
+            for var in comp_dict[compIndex]['vars'].keys():
+                comp_dict[compIndex]['vars'][var]['symbol']=comp_dict[compIndex]['vars'][var]['symbol']+ '_' + compName
+            if 'state_vars' in m_components[compType].keys():                    
+                for state_var in m_components[compType]['state_vars'].keys():
+                    comp_dict[compIndex]['state_vars'][state_var]['symbol']=comp_dict[compIndex]['state_vars'][state_var]['symbol']+ '_' + compName
         else:
-            print('The component type is not found in the e_components and biochem_components')
+            print('The component type is not found in the e_components or biochem_components or m_components')
 
     for j in range(len(ReName)):
         # The e_0 of the R component is the sum of the e_0 of each C component in the column of N_f[i,:]
@@ -235,7 +248,7 @@ def update_eqn(comp_dict):
                 f"{comp['vars']['e_0']['symbol']} = {sum_in_efforts_port0}",
                 f"{comp['vars']['e_1']['symbol']} = {sum_out_efforts_port1}",
             ]
-        elif comp['type']=='C':
+        elif comp['type']=='C' or comp['type']=='m_C':
             comp['constitutive_relations']=[
             f" {comp['vars']['e_0']['symbol']}={comp['state_vars']['q_0']['symbol']}/{comp['params']['C']['symbol']}",
             f"ode({comp['state_vars']['q_0']['symbol']},t) = {comp['vars']['f_0']['symbol']}"
@@ -248,8 +261,8 @@ def update_eqn(comp_dict):
             comp['conservation_relations']=[
                 f"{comp['vars']['f_0']['symbol']} = {sum_in_flows}",
                 ]
-            
-        elif comp['type']=='R':
+
+        elif comp['type']=='R' or comp['type']=='m_R':
             comp['constitutive_relations']=[
                 f"{comp['vars']['f_0']['symbol']}={comp['vars']['e_0']['symbol']}/{comp['params']['r']['symbol']}",
             ]
@@ -260,20 +273,12 @@ def update_eqn(comp_dict):
             sum_in_efforts= sum_in_efforts[1:] if sum_in_efforts[0]=='+' else sum_in_efforts
             comp['conservation_relations']=[
                 f"{comp['vars']['e_0']['symbol']} = {sum_in_efforts}",
-                ]                
-        elif comp['type']=='Se':
+                ]             
+        elif comp['type']=='Se' or comp['type']=='e_Se' or comp['type']=='m_Se':
             comp['constitutive_relations']=[
                 f"{comp['vars']['e_0']['symbol']}={comp['params']['e']['symbol']}"
             ]
-        elif comp['type']=='e_Se':
-            comp['constitutive_relations']=[
-                f"{comp['vars']['e_0']['symbol']}={comp['params']['e']['symbol']}"
-            ]
-        elif comp['type']=='Sf':
-            comp['constitutive_relations']=[
-                f"{comp['vars']['f_0']['symbol']}={comp['params']['f']['symbol']}"
-            ]
-        elif comp['type']=='e_Sf':
+        elif comp['type']=='Sf' or comp['type']=='e_Sf' or comp['type']=='m_Sf':
             comp['constitutive_relations']=[
                 f"{comp['vars']['f_0']['symbol']}={comp['params']['f']['symbol']}"
             ]
@@ -356,7 +361,7 @@ def to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.t
     for comp in comp_dict:
         for param in comp_dict[comp]['params']:
             if param not in ['R','T','F']:
-                if (comp_dict[comp]['type']=="ch_Se" and param=='q_init') or (comp_dict[comp]['type']=='e_Se' and param =='e'): 
+                if (comp_dict[comp]['type']=="ch_Se" and param=='q_init') or (comp_dict[comp]['type']=='e_Se' and param =='e') or (comp_dict[comp]['type']=="m_Se" and param=='e'): 
                     cellml_code+=indent*2+f"var {comp_dict[comp]['params'][param]['symbol']}: {comp_dict[comp]['params'][param]['units']}" + f"{{ pub: out}};\n"
                 else:
                     cellml_code+=indent*2+f"var {comp_dict[comp]['params'][param]['symbol']}: {comp_dict[comp]['params'][param]['units']}" + f"{{ init: {comp_dict[comp]['params'][param]['value']}, pub: out}};\n"

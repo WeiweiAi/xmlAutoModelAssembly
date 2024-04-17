@@ -63,6 +63,7 @@ def _base_components():
                         ]
                     },
                     "q_init": {"description": "Generalised position",
+                               "value": 1,
                     },
                 },
                 "vars":{
@@ -394,6 +395,17 @@ def e_components_units():
     e_components['components']['C']['state_vars']['q_0']['units'] = 'fC'
     e_components['components']['C']['state_vars']['q_0']['symbol'] = 'q'
     e_components['components']['C']['state_vars']['q_0']['IOType'] = 'out'
+
+    e_components['components']['R']['params']['r']['units'] = 'pOhm'
+    e_components['components']['R']['params']['r']['symbol'] = 'R'
+
+    e_components['components']['R']['vars']['e_0']['units'] = 'volt'
+    e_components['components']['R']['vars']['f_0']['units'] = 'fA'
+    e_components['components']['R']['vars']['e_0']['symbol'] = 'E'
+    e_components['components']['R']['vars']['f_0']['symbol'] = 'I'
+    e_components['components']['R']['vars']['e_0']['IOType'] = 'in'
+    e_components['components']['R']['vars']['f_0']['IOType'] = 'out'
+    
    
     e_components['components']['zF'] = copy.deepcopy(_base_components()['components']['TF'])
     e_components['components']['zF']['params']['r']['units'] = 'dimensionless'
@@ -499,4 +511,56 @@ def biochem_components_units():
     
 
     return biochem_components
+
+def m_components_units(): # for mechanics
+    m_components = copy.deepcopy(_base_components())
+    m_components['components']['m_Se']= copy.deepcopy(_base_components()['components']['Se'])
+    m_components['components']['m_Sf']= copy.deepcopy(_base_components()['components']['Sf'])
+    # remove the original Se, Sf from the base_components
+    m_components['components'].pop('Se')
+    m_components['components'].pop('Sf')
+    m_components['components']['m_Se']['params']['e']['units'] = 'J_per_um'
+    m_components['components']['m_Sf']['params']['f']['units'] = 'um_per_s'
+    m_components['components']['m_Se']['params']['e']['symbol'] = 'F0'
+    m_components['components']['m_Sf']['params']['f']['symbol'] = 'dx0'
+    m_components['components']['m_Sf']['vars']['f_0']['units'] = 'um_per_s'
+    m_components['components']['m_Se']['vars']['e_0']['units'] = 'J_per_um'
+    m_components['components']['m_Sf']['vars']['f_0']['symbol'] = 'dx'
+    m_components['components']['m_Se']['vars']['e_0']['symbol'] = 'F'
+    m_components['components']['m_Sf']['vars']['f_0']['IOType'] = 'out'
+    m_components['components']['m_Se']['vars']['e_0']['IOType'] = 'out'
+
+    m_components['components']['m_R']= copy.deepcopy(_base_components()['components']['R'])
+    m_components['components']['m_C']= copy.deepcopy(_base_components()['components']['C'])
+    # remove the original Se, Sf from the base_components
+    m_components['components'].pop('R')
+    m_components['components'].pop('C')
+
+    m_components['components']['m_R']['params']['r']['units'] = 'J_s_per_um2'
+    m_components['components']['m_R']['params']['r']['symbol'] = 'eta'
+
+    m_components['components']['m_R']['vars']['e_0']['units'] = 'J_per_um'
+    m_components['components']['m_R']['vars']['f_0']['units'] = 'um_per_s'
+    m_components['components']['m_R']['vars']['e_0']['symbol'] = 'F'
+    m_components['components']['m_R']['vars']['f_0']['symbol'] = 'dx'
+    m_components['components']['m_R']['vars']['e_0']['IOType'] = 'in'
+    m_components['components']['m_R']['vars']['f_0']['IOType'] = 'out'
+
+    m_components['components']['m_C']['params']['C']['units'] = 'um2_per_J'
+    m_components['components']['m_C']['params']['q_init']['units'] = 'um'
+    m_components['components']['m_C']['params']['C']['symbol'] = 'k'
+    m_components['components']['m_C']['params']['q_init']['symbol'] = 'x_init'
+
+    m_components['components']['m_C']['vars']['e_0']['units'] = 'J_per_um'
+    m_components['components']['m_C']['vars']['f_0']['units'] = 'um_per_s'
+    m_components['components']['m_C']['vars']['e_0']['symbol'] = 'F'
+    m_components['components']['m_C']['vars']['f_0']['symbol'] = 'dx'
+    m_components['components']['m_C']['vars']['e_0']['IOType'] = 'out'
+    m_components['components']['m_C']['vars']['f_0']['IOType'] = 'in'
+    m_components['components']['m_C']['state_vars']['q_0']['units'] = 'um'
+    m_components['components']['m_C']['state_vars']['q_0']['symbol'] = 'x'
+    m_components['components']['m_C']['state_vars']['q_0']['IOType'] = 'out'
+   
     
+
+    return m_components    
