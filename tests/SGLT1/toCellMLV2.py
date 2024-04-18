@@ -7,7 +7,7 @@ from src.coder import toCellML2
 
 # Specify the path to the model and the model name
 path_='C:/Users/wai484/temp/b65/Electrogenic cotransporter/'
-for model_name in ['units','params_BG','SGLT1_BG','params_BG_0','SGLT1_BG_0']:
+for model_name in ['units','params_BG','SGLT1_BG','params_BG_step','SGLT1_BG_step','params_BG_step_ss','SGLT1_BG_step_ss',]:
     modelfile= model_name + '.cellml'
     oldPath=path_+ modelfile
 
@@ -15,7 +15,7 @@ for model_name in ['units','params_BG','SGLT1_BG','params_BG_0','SGLT1_BG_0']:
     if not os.path.exists(path_+'CellMLV2'):
         os.makedirs(path_+'CellMLV2')
     newPath=path_+'CellMLV2/'+ modelfile
-    if model_name == 'SGLT1_BG' or model_name == 'SGLT1_BG_0':
+    if model_name == 'SGLT1_BG' or model_name == 'SGLT1_BG_step'or model_name == 'SGLT1_BG_step_ss':
         py_full_path=newPath.replace('.cellml','.py')
     else:
         py_full_path=None
