@@ -8,7 +8,7 @@ from src.sedDocExecutor import exec_sed_doc
 
 # Convert the model to CellML 2.0 if needed
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/'
-model_name='GLUT1_kinetic'
+model_name='GLUT2_kinetic'
 modelfile= model_name + '.cellml'
 oldPath=path_+ modelfile
 # create a new directory for the new model if it does not exist
@@ -68,7 +68,7 @@ dict_algorithmParameter={'kisaoID':'KISAO:0000467', 'name':'max_step','value':'1
 dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[]} 
 # This is the simulation setting
 # You can choose one of the following simulation types: 'UniformTimeCourse', 'OneStep'
-simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':25,'numberOfSteps':25}
+simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':25,'numberOfSteps':250}
 # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
 
 

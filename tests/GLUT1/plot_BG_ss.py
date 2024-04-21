@@ -5,11 +5,11 @@ from data_plot import subplots_ajdust, plot_data
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
 
 save_fig = {'save_fig': True, 'fig_format': 'png', 'file_path': path_, 'filename': 'BG_fit_ss'}
-filename = path_+'report_task_GLUT1_kinetic.csv'
-filename_BG_io = path_+'GLUT1_BG_ss_io.csv'
-filename_BG_oi = path_+'GLUT1_BG_ss_oi.csv'
-filename_ss_io = path_+'report_task_GLUT1_ss_io.csv'
-filename_ss_oi = path_+'report_task_GLUT1_ss_oi.csv'
+filename = path_+'report_task_GLUT2_kinetic.csv'
+filename_BG_io = path_+'GLUT2_BG_ss_io.csv'
+filename_BG_oi = path_+'GLUT2_BG_ss_oi.csv'
+filename_ss_io = path_+'report_task_GLUT2_ss_io.csv'
+filename_ss_oi = path_+'report_task_GLUT2_ss_oi.csv'
 
 Vi=0.09
 outputs={'glu':{'component':'main','name':'glu','scale':1},

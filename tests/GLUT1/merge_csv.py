@@ -1,8 +1,8 @@
 import os
 csv_files = []
-model_name = 'GLUT1_BG'
+model_name = 'GLUT2_BG'
 path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
-for model_id in range(25):
+for model_id in range(250):
     sed_model_id = model_name+f'_{model_id}_io'
     csv_files.append(path_+'report_task_'+f'{sed_model_id}'+'.csv')
 # only remove the first line of the second and subsequent files
@@ -20,7 +20,7 @@ with open(io_csv, 'w') as file:
                 file.write(f.read())
 
 csv_files = []
-for model_id in range(25):
+for model_id in range(250):
     sed_model_id = model_name+f'_{model_id}_oi'
     csv_files.append(path_+'report_task_'+f'{sed_model_id}'+'.csv')
 # only remove the first line of the second and subsequent files
