@@ -18,8 +18,8 @@ outputs={'glu':{'component':'main','name':'glu','scale':1},
          }
 
 subtitle_kwargs={}
-fig_cfg = {'num_rows': 2, 'num_cols': 1, 'width':6, 'height':6, 'fig_title': None, 'title_y': 0.98, 'fontsize': 10, 
-           'left': 0.145, 'bottom': 0.1, 'right': 0.9, 'top': 0.9, 'wspace': 0.2, 'hspace': 0.2}
+fig_cfg = {'num_rows': 1, 'num_cols': 2, 'width':8, 'height':3, 'fig_title': None, 'title_y': 1, 'fontsize': 8, 
+           'left': 0.1, 'bottom': 0.3, 'right': 0.95, 'top': 0.98, 'wspace': 0.3, 'hspace': 0.1}
 fig, axs= subplots_ajdust(fig_cfg, **subtitle_kwargs)
 
 plot_cfg = {}
@@ -29,25 +29,25 @@ N=len(outputs)
 for i, output in enumerate(outputs):
     if i>0:
         line_cfg[i] = { 'xdata': (filename,'glu'), 'ydata':(filename,output), 
-                'color': 'b', 'linestyle': '-',  'legend_label': 'kinetic'}
+                'color': 'b', 'linestyle': '-',  'legend_label': 'Lowe AG & Walmsley AR (1986)'}
 
 line_cfg[3] = { 'xdata': (filename_BG_io,'q_init_Ai'), 'ydata':(filename_BG_io,'v_r1'),
-                'color': 'k', 'linestyle': '-',  'legend_label': 'BG_io_ss'}
+                'color': 'k', 'linestyle': '-',  'legend_label': 'Bond graph'}
 line_cfg[4] = { 'xdata': (filename_BG_oi,'q_init_Ao'), 'ydata':(filename_BG_oi,'v_r1'),
-                'color': 'k', 'linestyle': '-',  'legend_label': 'BG_oi_ss'}
+                'color': 'k', 'linestyle': '-',  'legend_label': 'Bond graph'}
 line_cfg[5] = { 'xdata': (filename_ss_io,'q_Ai'), 'ydata':(filename_ss_io,'v_free'),
-                'color': 'r', 'linestyle': '--',  'legend_label': 'io_ss_free'}
+                'color': 'r', 'linestyle': '--',  'legend_label': 'Steady-state Eq. 19'}
 line_cfg[6] = { 'xdata': (filename_ss_oi,'q_Ao'), 'ydata':(filename_ss_oi,'v_free'),
-                'color': 'r', 'linestyle': '--',  'legend_label': 'oi_ss_free'}
+                'color': 'r', 'linestyle': '--',  'legend_label': 'Steady-state Eq. 19'}
 line_cfg[7] = { 'xdata': (filename_ss_io,'q_Ai'), 'ydata':(filename_ss_io,'v'),
-                'color': 'r', 'linestyle': '-.',  'legend_label': 'io_ss'}
+                'color': 'm', 'linestyle': '-.',  'legend_label': 'Steady-state Eqs 19 and 20'}
 line_cfg[8] = { 'xdata': (filename_ss_oi,'q_Ao'), 'ydata':(filename_ss_oi,'v'),
-                'color': 'r', 'linestyle': '-.',  'legend_label': 'oi_ss'}
+                'color': 'm', 'linestyle': '-.',  'legend_label': 'Steady-state Eqs 19 and 20'}
 
-plot_cfg[1] = {'ylabel': 'v_io_ss', 'xlabel': 'q_Ai (mM)','show_grid': 'both', 'grid_axis': 'both',
+plot_cfg[2] = {'ylabel': 'zero trans efflux (mM/s)', 'xlabel': '[Ai] (mM)','show_grid': 'both', 'grid_axis': 'both', 'title': '(b) Zero trans efflux',
                 'line': [1,3,5,7], 'legend': [1,3,5,7]}
 
-plot_cfg[2] = {'ylabel': 'v_oi_ss', 'xlabel': 'q_Ao (mM)','show_grid': 'both', 'grid_axis': 'both',
+plot_cfg[1] = {'ylabel': 'zero trans influx (mM/s)', 'xlabel': '[Ao] (mM)','show_grid': 'both', 'grid_axis': 'both',  'title': '(a) Zero trans influx',
                 'line': [2,4,6,8], 'legend': [2,4,6,8]}
 
 

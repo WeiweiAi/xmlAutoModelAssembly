@@ -56,4 +56,4 @@ n_zeros=len(CompName)
 csv_file=file_path+'SLC2_BG.csv'
 update_params(comp_dict,n_zeros, kappa, K,csv_file)
 to_cellmlV1_params(comp_dict, model_name='params_BG',model_file='params_BG.txt',file_path=file_path)
-to_cellmlV1_models(comp_dict, model_name='GLUT1_BG',model_file='GLUT1_BG_0.txt',params_file='params_BG.cellml',file_path=file_path)
+to_cellmlV1_models(comp_dict, model_name='GLUT2_BG',model_file='GLUT2_BG.txt',params_file='params_BG.cellml',file_path=file_path)
