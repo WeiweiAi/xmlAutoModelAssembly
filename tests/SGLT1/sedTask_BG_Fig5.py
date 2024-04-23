@@ -15,7 +15,7 @@ oldPath=path_+ modelfile
 if not os.path.exists(path_+'CellMLV2'):
     os.makedirs(path_+'CellMLV2')
 
-path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
+path_='C:/Users/wai484/temp/b65/Electrogenic cotransporter/CellMLV2/'
 newPath=path_+ modelfile
 # convert the model to CellML 2.0
 try:
@@ -23,10 +23,12 @@ try:
 except Exception as err:
     exit()
 # ********** TThe above can be commented out if the model is already in CellML 2.0 **********
-model_ids_=['_fig5_m150mV','_fig5_m100mV','_fig5_m50mV','_fig5_m40mV','_fig5_40mV','_fig5_50mV','_fig5_80mV',
-            '_fig5_m150mV_sugar','_fig5_m100mV_sugar','_fig5_m50mV_sugar','_fig5_m40mV_sugar','_fig5_40mV_sugar','_fig5_50mV_sugar','_fig5_80mV_sugar',]
-test_volts=['-0.15','-0.1','-0.05','-0.04','0.04','0.05','0.08','-0.15','-0.1','-0.05','-0.04','0.04','0.05','0.08']
-Glcos=['1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1','1','1','1','1','1','1']
+model_ids_=['_fig5_m150mV','_fig5_m120mV','_fig5_m80mV','_fig5_m50mV','_fig5_m30mV','_fig5_0mV','_fig5_40mV','_fig5_50mV','_fig5_80mV',
+            '_fig5_m150mV_sugar','_fig5_m120mV_sugar','_fig5_m80mV_sugar','_fig5_m50mV_sugar','_fig5_m30mV_sugar','_fig5_0mV_sugar',
+            '_fig5_40mV_sugar','_fig5_50mV_sugar','_fig5_80mV_sugar',]
+test_volts=['-0.15','-0.12','-0.08','-0.05','-0.03','0','0.04','0.05','0.08',
+            '-0.15','-0.12','-0.08','-0.05','-0.03','0','0.04','0.05','0.08',]
+Glcos=['1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1e-12','1','1','1','1','1','1','1','1','1']
 for i in range(len(model_ids_)):
     model_id_=model_ids_[i]
     test_volt=test_volts[i]
@@ -60,7 +62,7 @@ for i in range(len(model_ids_)):
     # scale is the scaling factor for the output variable
     outputs={'t':{'component':'SGLT1_BG','name':'t','scale':1},
              'Ii':{'component':'SGLT1_BG','name':'Ii','scale':-1e-6},         
-             'I_ss':{'component':'SGLT1_BG','name':'Ii','scale':1e-6},
+             'I_ss':{'component':'SGLT1_BG','name':'I_ss','scale':1e-6},
              'V0_Vm':{'component':'params_BG','name':'V0_Vm','scale':1e3},
              'V_E':{'component':'params_BG','name':'V_E','scale':1e3},
              }
@@ -76,7 +78,7 @@ for i in range(len(model_ids_)):
     dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[dict_algorithmParameter,dict_algorithmParameter2]} 
     # This is the simulation setting
     # You can choose one of the following simulation types: 'UniformTimeCourse', 'OneStep'
-    simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':2,'numberOfSteps':20000}
+    simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':3,'numberOfSteps':30000}
     # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
 
 

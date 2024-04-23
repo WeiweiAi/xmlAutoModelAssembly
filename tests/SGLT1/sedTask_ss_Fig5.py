@@ -8,7 +8,7 @@ from src.sedDocExecutor import exec_sed_doc
 
 # Convert the model to CellML 2.0 if needed
 path_='C:/Users/wai484/temp/b65/Electrogenic cotransporter/'
-model_name='SGLT1_BG_step'
+model_name='SGLT1_ss'
 modelfile= model_name + '.cellml'
 oldPath=path_+ modelfile
 # create a new directory for the new model if it does not exist
@@ -23,12 +23,10 @@ try:
 except Exception as err:
     exit()
 # ********** TThe above can be commented out if the model is already in CellML 2.0 **********
-model_ids_=['_fig10_50mV','_fig10_150mV','_fig10_50mV_sugar','_fig10_150mV_sugar']
-test_volts=['0.05','-0.15','0.05','-0.15']
-Glcos=['1e-12','1e-12','1','1']
+model_ids_=['_fig5','_fig5_sugar']
+Glcos=['1e-12','1']
 for i in range(len(model_ids_)):
     model_id_=model_ids_[i]
-    test_volt=test_volts[i]
     Glco=Glcos[i]
     # ********** The following is to create a dictionary for the sedml file **********
     dict_sedDocument=create_dict_sedDocment()
@@ -46,8 +44,7 @@ for i in range(len(model_ids_)):
     # This is the model file name, assuming in the same folder with the sedml file
     model_source = model_name + '.cellml' 
     # This is to modify the model parameters if needed
-    changes={'test_volt':{'component':'params_BG','name':'test_volt','newValue':test_volt},
-             'Glco':{'component':'params_BG','name':'Glco','newValue':Glco}
+    changes={'Glco':{'component':'params_BG','name':'Glco','newValue':Glco}
              } 
     # the format is {'id':{'component':str,'name':str,'newValue':str}}
     # Example: changes={'V_m':{'component':'main','name':'V_m','newValue':'-0.055'}
@@ -58,24 +55,23 @@ for i in range(len(model_ids_)):
     # name is the variable name of the outputs
     # scale is the scaling factor for the output variable
     outputs={'t':{'component':'SGLT1_BG','name':'t','scale':1},
-             'Ii':{'component':'SGLT1_BG','name':'Ii','scale':-1e-6},         
-             'I_ss':{'component':'SGLT1_BG','name':'Ii','scale':1e-6},
+             'Ii':{'component':'SGLT1_BG','name':'Ii','scale':-1e-6},
+             'Ii_1':{'component':'SGLT1_BG','name':'Ii_1','scale':-1e-6},           
              'V0_Vm':{'component':'params_BG','name':'V0_Vm','scale':1e3},
-             'V_E':{'component':'params_BG','name':'V_E','scale':1e3},
              }
     # You can add more outputs if needed
 
     # The following is the simulation setting
     # This is to set the maximum step size for the simulation
-    dict_algorithmParameter={'kisaoID':'KISAO:0000209', 'name':'rtol','value':'1e-10'} 
-    dict_algorithmParameter2={'kisaoID':'KISAO:0000211', 'name':'atol','value':'1e-10'} 
+    dict_algorithmParameter={'kisaoID':'KISAO:0000209', 'name':'rtol','value':'1e-12'} 
+    dict_algorithmParameter2={'kisaoID':'KISAO:0000211', 'name':'atol','value':'1e-12'} 
     # You can set more algorithm parameters if needed. You can refer to get_KISAO_parameters() in src/simulator.py file to get the parameters for the specific algorithm
     # Add the algorithm parameters to listOfAlgorithmParameters
     # You can choose one of the simulation algorithms specified by KISAO_ALGORITHMS in src/simulator.py file
     dict_algorithm={'kisaoID':'KISAO:0000535','name':'VODE','listOfAlgorithmParameters':[dict_algorithmParameter,dict_algorithmParameter2]} 
     # This is the simulation setting
     # You can choose one of the following simulation types: 'UniformTimeCourse', 'OneStep'
-    simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':1.3,'numberOfSteps':13000}
+    simSetting={'type':'UniformTimeCourse','algorithm':dict_algorithm,'initialTime':0,'outputStartTime':0,'outputEndTime':20,'numberOfSteps':200}
     # simSetting={'type':'OneStep','algorithm':dict_algorithm,'step':0.1}
 
 

@@ -15,7 +15,7 @@ oldPath=path_+ modelfile
 if not os.path.exists(path_+'CellMLV2'):
     os.makedirs(path_+'CellMLV2')
 
-path_='C:/Users/wai484/temp/b65/Facilitated transporter/CellMLV2/'
+path_='C:/Users/wai484/temp/b65/Electrogenic cotransporter/CellMLV2/'
 newPath=path_+ modelfile
 # convert the model to CellML 2.0
 try:
