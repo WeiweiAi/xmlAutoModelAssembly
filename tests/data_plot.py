@@ -29,9 +29,10 @@ def subplots_ajdust(fig_cfg, **subtitle_kwargs):
     # expressed as a fraction of the average axis height, 0.2
     rows, cols = fig_cfg.get('num_rows', 1), fig_cfg.get('num_cols', 1)
     width, height = fig_cfg.get('width', 6), fig_cfg.get('height', 9)    
+    plt.rcParams['font.size'] = fig_cfg.get('fontsize', 10)
     fig, axs = plt.subplots(rows,cols,figsize=(width, height),squeeze=False)
     y=fig_cfg.get('title_y', 0.98) # The y location of the text in figure coordinates.
-    fig.suptitle(fig_cfg.get('fig_title', ''), y=fig_cfg.get('title_y', 0.98), fontsize=fig_cfg.get('fontsize', 10), **subtitle_kwargs)
+    fig.suptitle(fig_cfg.get('fig_title', ''), y=fig_cfg.get('title_y', 0.98),  **subtitle_kwargs)
     fig.subplots_adjust(left=left, bottom=bottom, right=right, top=top, wspace=wspace, hspace=hspace)
 
     return fig, axs
@@ -85,7 +86,8 @@ def plot_data(fig, axs, plot_cfg, line_cfg, save_fig):
             ax.set_xticks(plot_data['xticks'])
         if plot_data.get('yticks', None):
             ax.set_yticks(plot_data['yticks'])
-                
+        if 'title' in plot_data and plot_data['title'] is not None:
+            ax.set_title(plot_data['title'],y=plot_data.get('title_y', 1.0))                    
         if plot_data.get('show_grid', False):
             ax.grid(visible=True, which=plot_data['show_grid'], axis=plot_data.get('grid_axis', 'both'), **plot_data.get('grid_properties', {}))
         if 'xticklabel' in plot_data:
