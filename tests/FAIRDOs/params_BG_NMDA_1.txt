@@ -1,0 +1,40 @@
+def model params_BG as
+    def import using "./units.cellml" for
+        unit fmol using unit fmol;
+        unit J_per_K_mol using unit J_per_K_mol;
+        unit fmol_per_s using unit fmol_per_s;
+        unit per_fmol using unit per_fmol;
+    enddef;
+    def comp params_BG as
+        var R: J_per_K_mol{ init: 8.31, pub: out};
+        var T: kelvin{ init: 293, pub: out};
+        var K_C_g: per_fmol{ init: 1.326e+06, pub: out};
+        var q_init_C_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_CA_g: per_fmol{ init: 5.305e+02, pub: out};
+        var q_init_CA_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_CAA_g: per_fmol{ init: 0.849, pub: out};
+        var q_init_CAA_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_CH_g: per_fmol{ init: 2.155e+03, pub: out};
+        var q_init_CH_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_CAH_g: per_fmol{ init: 0.862, pub: out};
+        var q_init_CAH_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_CAAH_g: per_fmol{ init: 1.379e-03, pub: out};
+        var q_init_CAAH_g: fmol{ init: 16.666666666666664, pub: out};
+        var K_H1: per_fmol{ init: 2.032e+02, pub: out};
+        var q_init_H1: fmol{ init: 16.666666666666664, pub: out};
+        var K_H2: per_fmol{ init: 2.032e+02, pub: out};
+        var q_init_H2: fmol{ init: 16.666666666666664, pub: out};
+        var K_H3: per_fmol{ init: 2.032e+02, pub: out};
+        var q_init_H3: fmol{ init: 16.666666666666664, pub: out};
+        var K_open_g: per_fmol{ init: 0.431, pub: out};
+        var q_init_open_g: fmol{ init: 16.666666666666664, pub: out};
+        var kappa_re1: fmol_per_s{ init: 0.015, pub: out};
+        var kappa_re2: fmol_per_s{ init: 18.851, pub: out};
+        var kappa_re3: fmol_per_s{ init: 3.712e-03, pub: out};
+        var kappa_re4: fmol_per_s{ init: 9.279, pub: out};
+        var kappa_re5: fmol_per_s{ init: 5.799e+03, pub: out};
+        var kappa_re6: fmol_per_s{ init: 9.279, pub: out};
+        var kappa_re7: fmol_per_s{ init: 1.160e+04, pub: out};
+        var kappa_re8: fmol_per_s{ init: 1.079e+02, pub: out};
+    enddef;
+enddef;
