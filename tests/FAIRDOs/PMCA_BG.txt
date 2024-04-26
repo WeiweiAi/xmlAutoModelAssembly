@@ -1,10 +1,10 @@
 def model PMCA_BG as
     def import using "./units.cellml" for
-        unit fmol using unit fmol;
         unit J_per_mol using unit J_per_mol;
-        unit fmol_per_s using unit fmol_per_s;
-        unit J_per_K_mol using unit J_per_K_mol;
+        unit fmol using unit fmol;
         unit per_fmol using unit per_fmol;
+        unit J_per_K_mol using unit J_per_K_mol;
+        unit fmol_per_s using unit fmol_per_s;
     enddef;
     def import using "params_BG_PMCA.cellml" for
         comp params_BG_PMCA using comp params_BG_PMCA;

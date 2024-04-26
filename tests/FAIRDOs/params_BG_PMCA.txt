@@ -1,9 +1,9 @@
 def model params_BG as
     def import using "./units.cellml" for
-        unit fmol_per_s using unit fmol_per_s;
-        unit per_fmol using unit per_fmol;
-        unit J_per_K_mol using unit J_per_K_mol;
         unit fmol using unit fmol;
+        unit fmol_per_s using unit fmol_per_s;
+        unit J_per_K_mol using unit J_per_K_mol;
+        unit per_fmol using unit per_fmol;
     enddef;
     def comp params_BG as
         var R: J_per_K_mol{ init: 8.31, pub: out};

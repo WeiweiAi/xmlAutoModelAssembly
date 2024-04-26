@@ -15,7 +15,7 @@ csv_file=file_path+'PMCA_BG.csv'
 fmatrix='PMCA_f.csv'
 rmatrix='PMCA_r.csv'
 CompName,CompType,ReName,ReType,N_f,N_r=load_matrix(file_path+fmatrix,file_path+rmatrix)
-deltaG_ATP=-11.9e3 # J/mol
+deltaG_ATP=-50e3 # J/mol
 R=8.314 # J/(K*mol)
 T=293 # K
 AVO=6.022e23
@@ -37,6 +37,7 @@ k_6r=k_1f*k_2f*k_3f*k_4f*k_5f*k_6f/(k_1r*k_2r*k_3r*k_4r*k_5r*math.exp(-deltaG_AT
 
 print('q_tot=',q_init*6)
 print('k_6r=',k_6r)
+print('exp(-deltaG_ATP/(R*T))=',math.exp(-deltaG_ATP/(R*T)))
 
 kf=np.array([[k_1f,k_2f,k_3f,k_4f,k_5f,k_6f]]).transpose()
 kr=np.array([[k_1r,k_2r,k_3r,k_4r,k_5r,k_6r ]]).transpose()
