@@ -1,0 +1,38 @@
+def model params_BG as
+    def import using "./units.cellml" for
+        unit fmol_per_s using unit fmol_per_s;
+        unit J_per_K_mol using unit J_per_K_mol;
+        unit per_fmol using unit per_fmol;
+        unit fmol using unit fmol;
+    enddef;
+    def comp params_BG as
+        var R: J_per_K_mol{ init: 8.31, pub: out};
+        var T: kelvin{ init: 293, pub: out};
+        var K_EoCao: per_fmol{ init: 1.236e+02, pub: out};
+        var q_init_EoCao: fmol{ init: 16.666666666666664, pub: out};
+        var K_Eo: per_fmol{ init: 1.007e+03, pub: out};
+        var q_init_Eo: fmol{ init: 16.666666666666664, pub: out};
+        var K_EoNao: per_fmol{ init: 1.236e+02, pub: out};
+        var q_init_EoNao: fmol{ init: 16.666666666666664, pub: out};
+        var K_EiNai: per_fmol{ init: 38.449, pub: out};
+        var q_init_EiNai: fmol{ init: 16.666666666666664, pub: out};
+        var K_Ei: per_fmol{ init: 15.533, pub: out};
+        var q_init_Ei: fmol{ init: 16.666666666666664, pub: out};
+        var K_EiCai: per_fmol{ init: 82.952, pub: out};
+        var q_init_EiCai: fmol{ init: 16.666666666666664, pub: out};
+        var K_Cao: per_fmol{ init: 2.907e+02, pub: out};
+        var q_init_Cao: fmol{ init: 16.666666666666664, pub: out};
+        var K_Nao: per_fmol{ init: 0.080, pub: out};
+        var q_init_Nao: fmol{ init: 16.666666666666664, pub: out};
+        var K_Cai: per_fmol{ init: 2.907e+02, pub: out};
+        var q_init_Cai: fmol{ init: 16.666666666666664, pub: out};
+        var K_Nai: per_fmol{ init: 0.080, pub: out};
+        var q_init_Nai: fmol{ init: 16.666666666666664, pub: out};
+        var kappa_re1: fmol_per_s{ init: 36.521, pub: out};
+        var kappa_re2: fmol_per_s{ init: 89.107, pub: out};
+        var kappa_re3: fmol_per_s{ init: 85.156, pub: out};
+        var kappa_re4: fmol_per_s{ init: 3.662e+02, pub: out};
+        var kappa_re5: fmol_per_s{ init: 87.236, pub: out};
+        var kappa_re6: fmol_per_s{ init: 86.060, pub: out};
+    enddef;
+enddef;

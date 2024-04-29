@@ -1,0 +1,17 @@
+Parameter,Value,Unit
+$K_{EoCao}$,1.236e+02,fmol$^{-1}$
+$K_{Eo}$,1.007e+03,fmol$^{-1}$
+$K_{EoNao}$,1.236e+02,fmol$^{-1}$
+$K_{EiNai}$,38.449,fmol$^{-1}$
+$K_{Ei}$,15.533,fmol$^{-1}$
+$K_{EiCai}$,82.952,fmol$^{-1}$
+$K_{Cao}$,2.907e+02,fmol$^{-1}$
+$K_{Nao}$,0.080,fmol$^{-1}$
+$K_{Cai}$,2.907e+02,fmol$^{-1}$
+$K_{Nai}$,0.080,fmol$^{-1}$
+$\kappa_{re1}$,36.521,fmol.s$^{-1}$
+$\kappa_{re2}$,89.107,fmol.s$^{-1}$
+$\kappa_{re3}$,85.156,fmol.s$^{-1}$
+$\kappa_{re4}$,3.662e+02,fmol.s$^{-1}$
+$\kappa_{re5}$,87.236,fmol.s$^{-1}$
+$\kappa_{re6}$,86.060,fmol.s$^{-1}$
